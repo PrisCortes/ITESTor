@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#123f4b" />
+    <meta name="description" content="Marketplace universitario para estudiantes del ITESA." />
+    <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg" />
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/responsive.css" />
+    <title>ITEStore | ITESA</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Saltar al contenido</a>
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="ITEStore, inicio"><span class="brand-mark">IT</span><span>ITE<span>Store</span></span></a>
+      <div class="topbar-actions"><button class="icon-button" id="session-button" aria-label="Abrir inicio de sesión">↗</button></div>
+    </header>
+
+    <main id="main-content" class="page-shell" tabindex="-1">
+      <section class="view active" data-view="home" aria-labelledby="home-title">
+        <div class="section-heading"><div><p class="eyebrow">COMUNIDAD ITESA</p><h1 id="home-title">Encuentra lo que necesitas</h1></div><div class="heading-actions"><a class="filter-trigger" href="#loans">Préstamos</a><button class="filter-trigger" data-action="toggle-filters" aria-expanded="false">⌕ <span>Filtrar</span></button></div></div>
+        <form id="filters-form" class="filter-panel" hidden>
+          <label>Buscar<input name="query" type="search" placeholder="Ej. calculadora, bata..." autocomplete="off" /></label>
+          <label>Carrera<select name="career"><option value="">Todas las carreras</option></select></label>
+          <label>Operación<select name="operation"><option value="">Cualquier operación</option><option value="SALE">Venta</option><option value="EXCHANGE">Intercambio</option></select></label>
+          <div class="price-pair"><label>Precio mínimo<input name="minPrice" type="number" min="0" inputmode="decimal" /></label><label>Precio máximo<input name="maxPrice" type="number" min="0" inputmode="decimal" /></label></div>
+          <label>Disponibilidad<select name="availability"><option value="AVAILABLE">Disponible</option><option value="PENDING">Pendiente</option></select></label>
+          <button class="button secondary" type="submit">Aplicar filtros</button>
+        </form>
+        <div id="feed" class="card-grid" aria-live="polite"></div>
+      </section>
+
+      <section class="view" data-view="search" aria-labelledby="search-title">
+        <div class="section-heading"><div><p class="eyebrow">CATÁLOGO</p><h1 id="search-title">Buscar publicaciones</h1></div></div>
+        <form id="search-form" class="search-form"><label class="sr-only" for="search-input">Buscar</label><input id="search-input" name="query" type="search" placeholder="Busca por título o descripción" /><button class="button" type="submit">Buscar</button></form>
+        <div id="search-results" class="card-grid"></div>
+      </section>
+
+      <section class="view" data-view="publish" aria-labelledby="publish-title">
+        <div class="section-heading"><div><p class="eyebrow">NUEVA PUBLICACIÓN</p><h1 id="publish-title">Comparte algo útil</h1></div></div>
+        <form id="publish-form" class="form-card" novalidate>
+          <label>Título<input name="title" required maxlength="100" placeholder="Ej. Calculadora científica" /></label>
+          <label>Descripción<textarea name="description" required maxlength="1000" rows="4" placeholder="Describe el artículo, sus condiciones y lo que incluye."></textarea></label>
+          <div class="form-row"><label>Operación<select name="operation_type" required><option value="SALE">Venta</option><option value="EXCHANGE">Intercambio</option></select></label><label>Estado<select name="condition" required><option value="USED">Usado</option><option value="NEW">Nuevo</option></select></label></div>
+          <div class="form-row"><label>Precio (MXN)<input name="price" type="number" min="0" step="0.01" placeholder="0 para intercambio" /></label><label>Cantidad<input name="stock" type="number" min="1" value="1" required /></label></div>
+          <label>Carrera<select name="career_id" required><option value="">Selecciona una carrera</option></select></label>
+          <label id="publication-status-field" hidden>Disponibilidad<select name="status"><option value="AVAILABLE">Disponible</option><option value="PENDING">Pendiente</option><option value="COMPLETED">Concluido</option></select></label>
+          <div id="current-images" hidden></div>
+          <label>Imágenes <small>Máximo 4, JPG o PNG.</small><input name="images" type="file" accept="image/jpeg,image/png" multiple /></label>
+          <button class="button success" id="publish-submit" type="submit">Publicar artículo</button>
+          <button class="link-button" id="cancel-edit" type="button" hidden>Cancelar edición</button>
+        </form>
+      </section>
+
+      <section class="view" data-view="chats" aria-labelledby="chats-title"><div class="section-heading"><div><p class="eyebrow">CONVERSACIONES</p><h1 id="chats-title">Tus chats</h1></div></div><div id="chats-list" class="stack-list"></div></section>
+
+      <section class="view" data-view="loans" aria-labelledby="loans-title">
+        <div class="section-heading"><div><p class="eyebrow">PRÉSTAMOS</p><h1 id="loans-title">Solicitudes de préstamo</h1></div><div class="heading-actions"><button class="filter-trigger" data-action="open-my-loans">Mis préstamos</button><button class="button compact" data-action="open-loan-form">+ Solicitar</button></div></div>
+        <div id="loans-list" class="stack-list"></div>
+      </section>
+
+      <section class="view" data-view="profile" aria-labelledby="profile-title"><div class="section-heading"><div><p class="eyebrow">TU CUENTA</p><h1 id="profile-title">Perfil</h1></div></div><div id="profile-content" class="form-card"></div></section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Navegación principal">
+      <a href="#home" data-nav="home"><span>⌂</span>Inicio</a><a href="#search" data-nav="search"><span>⌕</span>Buscar</a><a href="#publish" data-nav="publish" class="publish-nav"><span>＋</span>Publicar</a><a href="#chats" data-nav="chats"><span>◌</span>Chats</a><a href="#profile" data-nav="profile"><span>☺</span>Perfil</a>
+    </nav>
+
+    <div id="modal-root" aria-live="polite"></div><div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
+    <template id="auth-template"><div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><button class="modal-close" data-action="close-modal" aria-label="Cerrar">×</button><p class="eyebrow">ITE STORE</p><h2 id="auth-title">Accede a tu cuenta</h2><div class="tab-row"><button class="tab active" data-auth-tab="login">Iniciar sesión</button><button class="tab" data-auth-tab="register">Registro</button></div><form id="login-form" class="auth-form"><label>Correo institucional<input name="email" type="email" required placeholder="tu.nombre@itesa.edu.mx" /></label><label>Contraseña<input name="password" type="password" required minlength="6" /></label><button class="button" type="submit">Iniciar sesión</button><button class="link-button" type="button" data-action="recover-password">¿Olvidaste tu contraseña?</button></form><form id="register-form" class="auth-form" hidden><label>Nombre completo<input name="name" required maxlength="120" /></label><label>Correo institucional<input name="email" type="email" required placeholder="tu.nombre@itesa.edu.mx" /></label><label>Carrera<select name="career_id" required><option value="">Selecciona una carrera</option></select></label><label>Contraseña<input name="password" type="password" required minlength="6" /></label><label>Confirmar contraseña<input name="passwordConfirm" type="password" required minlength="6" /></label><button class="button success" type="submit">Crear cuenta</button></form></section></div></template>
+    <template id="loan-template"><div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="loan-form-title"><button class="modal-close" data-action="close-modal" aria-label="Cerrar">×</button><h2 id="loan-form-title">Solicitar un préstamo</h2><form id="loan-form" class="auth-form"><label>Artículo requerido<input name="title" required maxlength="100" /></label><label>Descripción<textarea name="description" required rows="3"></textarea></label><label>Cantidad<input name="quantity" type="number" required min="1" value="1" /></label><label>Carrera<select name="career_id" required><option value="">Selecciona una carrera</option></select></label><label>Límite para propuestas<input name="deadline" type="datetime-local" required /></label><label>Tiempo de uso<input name="use_duration" required placeholder="Ej. 3 días" /></label><label>Devolución estimada<input name="estimated_return" type="datetime-local" required /></label><button class="button success" type="submit">Publicar solicitud</button></form></section></div></template>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
