@@ -37,7 +37,19 @@ Deno.serve(async request => {
     const { data:subscriptions } = await client.from('push_subscriptions').select('id,endpoint,p256dh,auth').eq('user_id',recipientId).is('revoked_at',null);
     const senderName = String(sender?.name || 'Usuario de ITEStore').trim();
     const messageBody = String(message.content || 'Te envió un mensaje.').replace(/\s+/g, ' ').trim().slice(0, 180);
-    const payload = JSON.stringify({ title:senderName, body:messageBody || 'Te envió un mensaje.', url:`/chat.html?v=20261117-6&id=${message.chat_id}`, tag:`messages-from-${message.sender_id}` });
+    const { data:unreadMessages } = await client
+      .from('messages')
+      .select('content,created_at,message_receipts!inner(recipient_id,read_at)')
+      .eq('chat_id', message.chat_id)
+      .eq('sender_id', message.sender_id)
+      .eq('message_receipts.recipient_id', recipientId)
+      .is('message_receipts.read_at', null)
+      .order('created_at', { ascending:false })
+      .limit(4);
+    const recentLines = (unreadMessages || []).slice().reverse().map(row => String(row.content || '').replace(/\s+/g, ' ').trim().slice(0, 120)).filter(Boolean);
+    const count = recentLines.length || 1;
+    const body = count > 1 ? `${count} mensajes nuevos\n${recentLines.join('\n')}` : (recentLines[0] || messageBody || 'Te envió un mensaje.');
+    const payload = JSON.stringify({ title:senderName, body, url:`/chat.html?v=20261117-6&id=${message.chat_id}`, tag:`chat-${message.chat_id}`, count });
     await Promise.all((subscriptions || []).map(async subscription => {
       try { await webpush.sendNotification({ endpoint:subscription.endpoint, keys:{ p256dh:subscription.p256dh, auth:subscription.auth } }, payload); }
       catch (error: any) { const status = error?.statusCode; if (status === 404 || status === 410) await client.from('push_subscriptions').update({ revoked_at:new Date().toISOString() }).eq('id',subscription.id); else console.error('Push no entregado', error); }
