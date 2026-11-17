@@ -4,7 +4,7 @@ const state = { session: null, profile: null, careers: [], publications: [], det
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, char => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[char]));
-const CHAT_BUILD = '20261117-6';
+const CHAT_BUILD = '20261117-7';
 const chatUrl = id => `chat.html?v=${CHAT_BUILD}&id=${encodeURIComponent(id)}`;
 const validInstitutionalEmail = email => /^[^@\s]+@itesa\.edu\.mx$/i.test(email.trim());
 
@@ -335,8 +335,8 @@ async function repostPublication(publicationId) {
   state.editingPublication = null; state.imagesToDelete = new Set();
   location.hash = '#publish';
   const form = $('#publish-form');
-  form.title.value = product.title; form.description.value = product.description; form.condition.value = product.condition; form.price.value = product.price; form.operation_type.value = product.operation_type; form.stock.value = 1; form.career_id.value = state.profile?.career_id || product.career_id;
-  $('#publish-title').textContent = 'Volver a publicar'; $('#publish-submit').textContent = 'Publicar artículo'; $('#publication-career-field').hidden = true; $('#publication-status-field').hidden = true; $('#cancel-edit').hidden = false; renderCurrentImages(); await copyRepostImages(product, form.images); updatePublishFileUI(form.images); syncFloatingFields(form);
+  form.title.value = product.title; form.description.value = product.description; form.condition.value = product.condition; form.price.value = product.price; form.operation_type.value = product.operation_type; form.stock.value = 1;
+  $('#publish-title').textContent = 'Volver a publicar'; $('#publish-submit').textContent = 'Publicar artículo'; $('#cancel-edit').hidden = false; renderCurrentImages(); await copyRepostImages(product, form.images); updatePublishFileUI(form.images); syncFloatingFields(form);
   toast('Revisa los datos. La nueva publicación tendrá stock de 1.', '');
 }
 
@@ -482,7 +482,7 @@ function syncChatsRealtime(active) {
     .subscribe();
   state.chatsFallbackTimer = setInterval(() => {
     if (isChatsViewActive()) loadChats();
-  }, 1500);
+  }, 5000);
 }
 
 function schedulePublicationsRefresh() {
@@ -753,12 +753,12 @@ async function startPublicationEdit() {
   if (!product) return;
   if (product.owner_id !== state.session.user.id) return toast('Solo puedes editar tus propias publicaciones.', 'error');
   state.editingPublication = product; state.imagesToDelete = new Set(); closeModal(); location.hash = '#publish';
-  const form = $('#publish-form'); form.title.value = product.title; form.description.value = product.description; form.condition.value = product.condition; form.price.value = product.price; form.operation_type.value = product.operation_type; form.stock.value = product.stock; form.career_id.value = product.career_id; form.status.value = product.status;
-  $('#publish-title').textContent = 'Editar publicación'; $('#publish-submit').textContent = 'Guardar cambios'; $('#publication-career-field').hidden = true; $('#publication-status-field').hidden = false; $('#cancel-edit').hidden = false; form.stock.min = '0'; renderCurrentImages(); updatePublishFileUI(form.images); syncFloatingFields(form);
+  const form = $('#publish-form'); form.title.value = product.title; form.description.value = product.description; form.condition.value = product.condition; form.price.value = product.price; form.operation_type.value = product.operation_type; form.stock.value = product.stock;
+  $('#publish-title').textContent = 'Editar publicación'; $('#publish-submit').textContent = 'Guardar cambios'; $('#cancel-edit').hidden = false; form.stock.min = '0'; renderCurrentImages(); updatePublishFileUI(form.images); syncFloatingFields(form);
 }
 
 function resetPublicationMode() {
-  state.editingPublication = null; state.imagesToDelete = new Set(); const form = $('#publish-form'); form.reset(); form.stock.value = 1; form.stock.min = '1'; form.career_id.value = state.profile?.career_id || ''; $('#publish-title').textContent = 'Comparte algo útil'; $('#publish-submit').textContent = 'Publicar artículo'; $('#publication-career-field').hidden = true; $('#publication-status-field').hidden = true; $('#cancel-edit').hidden = true; renderCurrentImages(); updatePublishFileUI(form.images); syncFloatingFields(form);
+  state.editingPublication = null; state.imagesToDelete = new Set(); const form = $('#publish-form'); form.reset(); form.stock.value = 1; form.stock.min = '1'; $('#publish-title').textContent = 'Comparte algo útil'; $('#publish-submit').textContent = 'Publicar artículo'; $('#cancel-edit').hidden = true; renderCurrentImages(); updatePublishFileUI(form.images); syncFloatingFields(form);
 }
 
 function validatePublicationForm(form, retainedCount) {
@@ -793,7 +793,7 @@ async function publish(form) {
     await uploadPublicationImages(publication, images, 0); form.reset(); updatePublishFileUI(form.images); syncFloatingFields(form); toast('Publicación creada.', 'success'); location.hash = '#home'; return;
   }
   if (current.owner_id !== state.session.user.id) return toast('No tienes permiso para editar esta publicación.', 'error');
-  const stock = Number(fields.get('stock')); const status = stock === 0 ? 'COMPLETED' : fields.get('status'); const payload = { title:fields.get('title').trim(), description:fields.get('description').trim(), operation_type:fields.get('operation_type'), condition:fields.get('condition'), price:fields.get('price') || 0, stock, career_id:current.career_id, status, completed_at:status === 'COMPLETED' ? (current.completed_at || new Date().toISOString()) : null };
+  const stock = Number(fields.get('stock')); const status = stock === 0 ? 'COMPLETED' : current.status; const payload = { title:fields.get('title').trim(), description:fields.get('description').trim(), operation_type:fields.get('operation_type'), condition:fields.get('condition'), price:fields.get('price') || 0, stock, career_id:current.career_id, status, completed_at:status === 'COMPLETED' ? (current.completed_at || new Date().toISOString()) : null };
   const { data:updated, error } = await supabase.from('publications').update(payload).eq('id',current.id).eq('owner_id',state.session.user.id).select().single(); if (error || !updated) return toast(error?.message || 'No fue posible actualizar la publicación.', 'error');
   for (const image of current.publication_images.filter(image => state.imagesToDelete.has(image.id))) { const removed = await supabase.storage.from('publication-images').remove([image.storage_path]); if (removed.error) return toast(`No se pudo eliminar una imagen: ${removed.error.message}`, 'error'); const deleted = await supabase.from('publication_images').delete().eq('id',image.id).eq('publication_id',current.id); if (deleted.error) return toast(deleted.error.message, 'error'); }
   for (let index = 0; index < retained.length; index++) { const positioned = await supabase.from('publication_images').update({ position:index }).eq('id',retained[index].id).eq('publication_id',current.id); if (positioned.error) return toast(positioned.error.message, 'error'); }
@@ -858,7 +858,6 @@ document.addEventListener('input', event => {
 });
 document.addEventListener('change', event => {
   if (event.target.closest('.floating-field')) syncFloatingFields(event.target.closest('.floating-field').parentElement);
-  if (event.target.id === 'pub-stock' && state.editingPublication && Number(event.target.value) === 0) { $('#pub-status').value = 'COMPLETED'; syncFloatingFields($('#pub-status').closest('.form-group')); }
   if (event.target.id === 'pub-images') updatePublishFileUI(event.target);
   if (event.target.id === 'profile-avatar-input') {
     const file = event.target.files?.[0];

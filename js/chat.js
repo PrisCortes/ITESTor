@@ -1,6 +1,6 @@
 import { supabase, isConfigured } from './supabaseClient.js';
 
-const CHAT_BUILD = '20261117-6';
+const CHAT_BUILD = '20261117-7';
 
 function syncChatViewport() {
   const height = Math.round(window.visualViewport?.height || window.innerHeight);
@@ -14,23 +14,14 @@ window.visualViewport?.addEventListener('scroll', syncChatViewport);
 async function activateCurrentServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   const registration = await navigator.serviceWorker.register(`/sw.js?v=${CHAT_BUILD}`, { scope:'/', updateViaCache:'none' });
-  await registration.update();
-  const worker = registration.installing || registration.waiting;
-  if (worker) await new Promise(resolve => {
-    const finish = () => resolve();
-    worker.addEventListener('statechange', () => { if (worker.state === 'activated' || worker.state === 'redundant') finish(); }, { once:false });
-    setTimeout(finish, 2500);
-  });
+  registration.update().catch(error => console.warn('No se pudo buscar una actualización de la aplicación:', error));
 }
 
 activateCurrentServiceWorker().catch(error => console.warn('No se pudo actualizar la aplicación instalada:', error));
 
 async function returnToChats(event) {
   event.preventDefault();
-  try {
-    await activateCurrentServiceWorker();
-    if ('caches' in window) await Promise.all((await caches.keys()).map(key => caches.delete(key)));
-  } catch (error) { console.warn('No se pudo limpiar la versión anterior de la aplicación:', error); }
+  activateCurrentServiceWorker().catch(error => console.warn('No se pudo actualizar la aplicación instalada:', error));
   location.replace(`index.html?v=${CHAT_BUILD}&from=chat&cache=${Date.now()}#chats`);
 }
 
@@ -284,6 +275,8 @@ function renderScheduleCard(event) {
 
 function renderMessages(messages) {
   const root = $('#messages');
+  const previousScrollTop = root.scrollTop;
+  const wasNearBottom = root.scrollHeight - root.scrollTop - root.clientHeight < 72;
   const timeline = buildTimelineItems(messages);
 
   if (!timeline.length) {
@@ -332,7 +325,7 @@ function renderMessages(messages) {
   }).join('');
 
   root.innerHTML = html;
-  root.scrollTop = root.scrollHeight;
+  root.scrollTop = wasNearBottom ? root.scrollHeight : previousScrollTop;
 }
 
 function personName(personId) {
@@ -620,7 +613,7 @@ function startFallbackRefresh() {
   clearInterval(fallbackRefreshTimer);
   fallbackRefreshTimer = setInterval(() => {
     if (document.visibilityState === 'visible') load(true);
-  }, 3000);
+  }, 10000);
 }
 
 async function openOtherUserProfile() {
