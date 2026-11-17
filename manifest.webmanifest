@@ -1,0 +1,10 @@
+{
+  "name": "ITEStore",
+  "short_name": "ITEStore",
+  "start_url": "/index.html#home",
+  "display": "standalone",
+  "background_color": "#f7f1e5",
+  "theme_color": "#123f4b",
+  "description": "Marketplace universitario para estudiantes del ITESA.",
+  "icons": [{ "src": "assets/icons/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

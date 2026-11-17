@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#123f4b" />
     <meta name="description" content="Marketplace universitario para estudiantes del ITESA." />
+    <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg" />
-    <link rel="stylesheet" href="css/variables.css" />
-    <link rel="stylesheet" href="css/base.css" />
-    <link rel="stylesheet" href="css/components.css" />
-    <link rel="stylesheet" href="css/responsive.css" />
+    <link rel="stylesheet" href="css/variables.css?v=20261116-4" />
+    <link rel="stylesheet" href="css/base.css?v=20261116-4" />
+    <link rel="stylesheet" href="css/components.css?v=20261116-4" />
+    <link rel="stylesheet" href="css/responsive.css?v=20261116-4" />
     <title>ITEStore | ITESA</title>
   </head>
   <body>
@@ -21,35 +22,83 @@
 
     <main id="main-content" class="page-shell" tabindex="-1">
       <section class="view active" data-view="home" aria-labelledby="home-title">
-        <div class="section-heading"><div><p class="eyebrow">COMUNIDAD ITESA</p><h1 id="home-title">Encuentra lo que necesitas</h1></div><div class="heading-actions"><a class="filter-trigger" href="#loans">Préstamos</a><button class="filter-trigger" data-action="toggle-filters" aria-expanded="false">⌕ <span>Filtrar</span></button></div></div>
-        <form id="filters-form" class="filter-panel" hidden>
-          <label>Buscar<input name="query" type="search" placeholder="Ej. calculadora, bata..." autocomplete="off" /></label>
-          <label>Carrera<select name="career"><option value="">Todas las carreras</option></select></label>
-          <label>Operación<select name="operation"><option value="">Cualquier operación</option><option value="SALE">Venta</option><option value="EXCHANGE">Intercambio</option></select></label>
-          <div class="price-pair"><label>Precio mínimo<input name="minPrice" type="number" min="0" inputmode="decimal" /></label><label>Precio máximo<input name="maxPrice" type="number" min="0" inputmode="decimal" /></label></div>
-          <label>Disponibilidad<select name="availability"><option value="AVAILABLE">Disponible</option><option value="PENDING">Pendiente</option></select></label>
-          <button class="button secondary" type="submit">Aplicar filtros</button>
-        </form>
+        <div class="section-heading"><div><p class="eyebrow">COMUNIDAD ITESA</p><h1 id="home-title">Encuentra lo que necesitas</h1></div><div class="heading-actions"><a class="filter-trigger" href="#loans">Préstamos</a></div></div>
         <div id="feed" class="card-grid" aria-live="polite"></div>
       </section>
 
       <section class="view" data-view="search" aria-labelledby="search-title">
         <div class="section-heading"><div><p class="eyebrow">CATÁLOGO</p><h1 id="search-title">Buscar publicaciones</h1></div></div>
-        <form id="search-form" class="search-form"><label class="sr-only" for="search-input">Buscar</label><input id="search-input" name="query" type="search" placeholder="Busca por título o descripción" /><button class="button" type="submit">Buscar</button></form>
+        <form id="search-form" class="search-form">
+          <label class="sr-only" for="search-input">Buscar</label>
+          <input id="search-input" name="query" type="search" placeholder="Productos, nombre o correo institucional" autocomplete="off" />
+          <button class="button search-icon-btn" type="submit" aria-label="Buscar">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.35" y2="16.35"/></svg>
+          </button>
+          <button class="filter-trigger search-icon-btn" id="toggle-search-filters" type="button" data-action="toggle-search-filters" aria-expanded="false" aria-controls="search-filters" aria-label="Filtrar resultados">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          </button>
+        </form>
+        <form id="search-filters" class="filter-panel search-filters" hidden><label>Carrera<select name="career"><option value="">Todas las carreras</option></select></label><label>Operación<select name="operation"><option value="">Cualquier operación</option><option value="SALE">Venta</option><option value="EXCHANGE">Intercambio</option></select></label><div class="price-pair"><label>Precio mínimo<input name="minPrice" type="number" min="0" inputmode="decimal" /></label><label>Precio máximo<input name="maxPrice" type="number" min="0" inputmode="decimal" /></label></div></form>
         <div id="search-results" class="card-grid"></div>
       </section>
 
       <section class="view" data-view="publish" aria-labelledby="publish-title">
         <div class="section-heading"><div><p class="eyebrow">NUEVA PUBLICACIÓN</p><h1 id="publish-title">Comparte algo útil</h1></div></div>
-        <form id="publish-form" class="form-card" novalidate>
-          <label>Título<input name="title" required maxlength="100" placeholder="Ej. Calculadora científica" /></label>
-          <label>Descripción<textarea name="description" required maxlength="1000" rows="4" placeholder="Describe el artículo, sus condiciones y lo que incluye."></textarea></label>
-          <div class="form-row"><label>Operación<select name="operation_type" required><option value="SALE">Venta</option><option value="EXCHANGE">Intercambio</option></select></label><label>Estado<select name="condition" required><option value="USED">Usado</option><option value="NEW">Nuevo</option></select></label></div>
-          <div class="form-row"><label>Precio (MXN)<input name="price" type="number" min="0" step="0.01" placeholder="0 para intercambio" /></label><label>Cantidad<input name="stock" type="number" min="1" value="1" required /></label></div>
-          <label>Carrera<select name="career_id" required><option value="">Selecciona una carrera</option></select></label>
-          <label id="publication-status-field" hidden>Disponibilidad<select name="status"><option value="AVAILABLE">Disponible</option><option value="PENDING">Pendiente</option><option value="COMPLETED">Concluido</option></select></label>
+        <form id="publish-form" class="form-card publish-form" novalidate>
+          <div class="form-group">
+            <div class="floating-field">
+              <input id="pub-title" name="title" required maxlength="100" placeholder=" " />
+              <label for="pub-title">Título</label>
+            </div>
+            <div class="floating-field">
+              <textarea id="pub-description" name="description" required maxlength="1000" rows="2" placeholder=" "></textarea>
+              <label for="pub-description">Descripción</label>
+            </div>
+          </div>
+          <div class="form-group form-row">
+            <div class="floating-field has-value">
+              <select id="pub-operation" name="operation_type" required><option value="SALE">Venta</option><option value="EXCHANGE">Intercambio</option></select>
+              <label for="pub-operation">Operación</label>
+            </div>
+            <div class="floating-field has-value">
+              <select id="pub-condition" name="condition" required><option value="USED">Usado</option><option value="NEW">Nuevo</option></select>
+              <label for="pub-condition">Estado</label>
+            </div>
+          </div>
+          <div class="form-group form-row">
+            <div class="floating-field">
+              <input id="pub-price" name="price" type="number" min="0" step="0.01" placeholder=" " />
+              <label for="pub-price">Precio (MXN)</label>
+            </div>
+            <div class="floating-field has-value">
+              <input id="pub-stock" name="stock" type="number" min="1" value="1" required placeholder=" " />
+              <label for="pub-stock">Cantidad</label>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="floating-field">
+              <select id="pub-career" name="career_id" required><option value="">Selecciona una carrera</option></select>
+              <label for="pub-career">Carrera</label>
+            </div>
+            <div class="floating-field has-value" id="publication-status-field" hidden>
+              <select id="pub-status" name="status"><option value="AVAILABLE">Disponible</option><option value="PENDING">Pendiente</option><option value="COMPLETED">Concluido</option></select>
+              <label for="pub-status">Disponibilidad</label>
+            </div>
+          </div>
           <div id="current-images" hidden></div>
-          <label>Imágenes <small>Máximo 4, JPG o PNG.</small><input name="images" type="file" accept="image/jpeg,image/png" multiple /></label>
+          <div class="form-group file-field">
+            <span class="file-field-label">Fotografías del artículo <small>Máximo 4 imágenes (JPG o PNG).</small></span>
+            <label class="file-upload-box" for="pub-images">
+              <span class="file-upload-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </span>
+              <span class="file-upload-copy">
+                <strong id="pub-images-title">Seleccionar imágenes</strong>
+              </span>
+            </label>
+            <input id="pub-images" class="sr-only" name="images" type="file" accept="image/jpeg,image/png" multiple />
+            <div id="pub-images-preview" class="selected-images-preview" hidden></div>
+          </div>
           <button class="button success" id="publish-submit" type="submit">Publicar artículo</button>
           <button class="link-button" id="cancel-edit" type="button" hidden>Cancelar edición</button>
         </form>
@@ -62,16 +111,115 @@
         <div id="loans-list" class="stack-list"></div>
       </section>
 
-      <section class="view" data-view="profile" aria-labelledby="profile-title"><div class="section-heading"><div><p class="eyebrow">TU CUENTA</p><h1 id="profile-title">Perfil</h1></div></div><div id="profile-content" class="form-card"></div></section>
+      <section class="view" data-view="profile" aria-labelledby="profile-title"><div class="section-heading"><div><p class="eyebrow">TU CUENTA</p><h1 id="profile-title">Perfil</h1></div></div><div id="profile-content" class="form-card profile-shell"></div></section>
+      <section class="view" data-view="admin" aria-labelledby="admin-title"><div class="section-heading"><div><p class="eyebrow">ADMINISTRACIÓN</p><h1 id="admin-title">Panel administrativo</h1></div></div><div id="admin-content" class="stack-list"></div></section>
     </main>
 
     <nav class="bottom-nav" aria-label="Navegación principal">
-      <a href="#home" data-nav="home"><span>⌂</span>Inicio</a><a href="#search" data-nav="search"><span>⌕</span>Buscar</a><a href="#publish" data-nav="publish" class="publish-nav"><span>＋</span>Publicar</a><a href="#chats" data-nav="chats"><span>◌</span>Chats</a><a href="#profile" data-nav="profile"><span>☺</span>Perfil</a>
+      <a href="#home" data-nav="home" aria-label="Inicio"><span class="nav-icon" aria-hidden="true">⌂</span><span class="nav-label">Inicio</span></a>
+      <a href="#search" data-nav="search" aria-label="Buscar"><span class="nav-icon" aria-hidden="true">⌕</span><span class="nav-label">Buscar</span></a>
+      <a href="#publish" data-nav="publish" class="publish-nav" aria-label="Publicar"><span class="nav-icon" aria-hidden="true">＋</span><span class="nav-label">Publicar</span></a>
+      <a href="#chats" data-nav="chats" aria-label="Chats"><span class="nav-icon" aria-hidden="true"><svg class="nav-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.5C18.6 10.6 20 12.4 20 14.5c0 1.4-.6 2.7-1.6 3.7L19 21l-3.2-1c-.9.3-1.8.5-2.8.5-2.5 0-4.7-1.1-6-2.8"/><path d="M10 4C5.6 4 2 6.9 2 10.5c0 1.8.9 3.4 2.3 4.6L3.5 18l3.3-1.1c1 .3 2.1.6 3.2.6 4.4 0 8-2.9 8-6.5S14.4 4 10 4z"/><circle cx="7" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="13" cy="10.5" r="1.1" fill="currentColor" stroke="none"/></svg></span><span class="nav-label">Chats</span></a>
+      <a href="#profile" data-nav="profile" aria-label="Perfil"><span class="nav-icon" aria-hidden="true">☺</span><span class="nav-label">Perfil</span></a>
     </nav>
 
     <div id="modal-root" aria-live="polite"></div><div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
-    <template id="auth-template"><div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><button class="modal-close" data-action="close-modal" aria-label="Cerrar">×</button><p class="eyebrow">ITE STORE</p><h2 id="auth-title">Accede a tu cuenta</h2><div class="tab-row"><button class="tab active" data-auth-tab="login">Iniciar sesión</button><button class="tab" data-auth-tab="register">Registro</button></div><form id="login-form" class="auth-form"><label>Correo institucional<input name="email" type="email" required placeholder="tu.nombre@itesa.edu.mx" /></label><label>Contraseña<input name="password" type="password" required minlength="6" /></label><button class="button" type="submit">Iniciar sesión</button><button class="link-button" type="button" data-action="recover-password">¿Olvidaste tu contraseña?</button></form><form id="register-form" class="auth-form" hidden><label>Nombre completo<input name="name" required maxlength="120" /></label><label>Correo institucional<input name="email" type="email" required placeholder="tu.nombre@itesa.edu.mx" /></label><label>Carrera<select name="career_id" required><option value="">Selecciona una carrera</option></select></label><label>Contraseña<input name="password" type="password" required minlength="6" /></label><label>Confirmar contraseña<input name="passwordConfirm" type="password" required minlength="6" /></label><button class="button success" type="submit">Crear cuenta</button></form></section></div></template>
-    <template id="loan-template"><div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="loan-form-title"><button class="modal-close" data-action="close-modal" aria-label="Cerrar">×</button><h2 id="loan-form-title">Solicitar un préstamo</h2><form id="loan-form" class="auth-form"><label>Artículo requerido<input name="title" required maxlength="100" /></label><label>Descripción<textarea name="description" required rows="3"></textarea></label><label>Cantidad<input name="quantity" type="number" required min="1" value="1" /></label><label>Carrera<select name="career_id" required><option value="">Selecciona una carrera</option></select></label><label>Límite para propuestas<input name="deadline" type="datetime-local" required /></label><label>Tiempo de uso<input name="use_duration" required placeholder="Ej. 3 días" /></label><label>Devolución estimada<input name="estimated_return" type="datetime-local" required /></label><button class="button success" type="submit">Publicar solicitud</button></form></section></div></template>
-    <script type="module" src="js/app.js"></script>
+    <template id="auth-template">
+      <div class="modal-backdrop">
+        <section class="modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+          <button class="modal-close" data-action="close-modal" aria-label="Cerrar">×</button>
+          <p class="eyebrow">ITE STORE</p>
+          <h2 id="auth-title">Accede a tu cuenta</h2>
+          <div class="tab-row"><button class="tab active" data-auth-tab="login">Iniciar sesión</button><button class="tab" data-auth-tab="register">Registro</button></div>
+          <form id="login-form" class="auth-form">
+            <div class="form-group">
+              <div class="floating-field">
+                <input id="login-email" name="email" type="email" required placeholder=" " />
+                <label for="login-email">Correo institucional</label>
+              </div>
+              <div class="floating-field">
+                <input id="login-password" name="password" type="password" required minlength="6" placeholder=" " />
+                <label for="login-password">Contraseña</label>
+              </div>
+            </div>
+            <button class="button" type="submit">Iniciar sesión</button>
+            <button class="link-button" type="button" data-action="recover-password">¿Olvidaste tu contraseña?</button>
+          </form>
+          <form id="register-form" class="auth-form" hidden>
+            <div class="form-group">
+              <div class="floating-field">
+                <input id="reg-name" name="name" required maxlength="120" placeholder=" " />
+                <label for="reg-name">Nombre completo</label>
+              </div>
+              <div class="floating-field">
+                <input id="reg-email" name="email" type="email" required placeholder=" " />
+                <label for="reg-email">Correo institucional</label>
+              </div>
+              <div class="floating-field">
+                <select id="reg-career" name="career_id" required><option value="">Selecciona una carrera</option></select>
+                <label for="reg-career">Carrera</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="floating-field">
+                <input id="reg-password" name="password" type="password" required minlength="6" placeholder=" " />
+                <label for="reg-password">Contraseña</label>
+              </div>
+              <div class="floating-field">
+                <input id="reg-password-confirm" name="passwordConfirm" type="password" required minlength="6" placeholder=" " />
+                <label for="reg-password-confirm">Confirmar contraseña</label>
+              </div>
+            </div>
+            <button class="button success" type="submit">Crear cuenta</button>
+          </form>
+        </section>
+      </div>
+    </template>
+    <template id="loan-template">
+      <div class="modal-backdrop">
+        <section class="modal" role="dialog" aria-modal="true" aria-labelledby="loan-form-title">
+          <button class="modal-close" data-action="close-modal" aria-label="Cerrar">×</button>
+          <h2 id="loan-form-title">Solicitar un préstamo</h2>
+          <form id="loan-form" class="auth-form">
+            <div class="form-group">
+              <div class="floating-field">
+                <input id="loan-title" name="title" required maxlength="100" placeholder=" " />
+                <label for="loan-title">Artículo requerido</label>
+              </div>
+              <div class="floating-field">
+                <textarea id="loan-description" name="description" required rows="2" placeholder=" "></textarea>
+                <label for="loan-description">Descripción</label>
+              </div>
+            </div>
+            <div class="form-group form-row">
+              <div class="floating-field has-value">
+                <input id="loan-quantity" name="quantity" type="number" required min="1" value="1" placeholder=" " />
+                <label for="loan-quantity">Cantidad</label>
+              </div>
+              <div class="floating-field">
+                <select id="loan-career" name="career_id" required><option value="">Selecciona una carrera</option></select>
+                <label for="loan-career">Carrera</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="floating-field has-value">
+                <input id="loan-deadline" name="deadline" type="datetime-local" required placeholder=" " />
+                <label for="loan-deadline">Límite para propuestas</label>
+              </div>
+              <div class="floating-field">
+                <input id="loan-duration" name="use_duration" required placeholder=" " />
+                <label for="loan-duration">Tiempo de uso</label>
+              </div>
+              <div class="floating-field has-value">
+                <input id="loan-return" name="estimated_return" type="datetime-local" required placeholder=" " />
+                <label for="loan-return">Devolución estimada</label>
+              </div>
+            </div>
+            <button class="button success" type="submit">Publicar solicitud</button>
+          </form>
+        </section>
+      </div>
+    </template>
+    <script>if(location.protocol==='file:'){document.body.innerHTML='<main class="page-shell"><article class="empty-state"><span class="empty-icon">⚠</span>ITEStore debe abrirse desde un servidor local. Usa <strong>http://localhost:8000</strong>, no el archivo HTML directamente.</article></main>';}else{const script=document.createElement('script');script.type='module';script.src='js/app.js?v=20261116-4';document.body.append(script);}</script>
   </body>
 </html>

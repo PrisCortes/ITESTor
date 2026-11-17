@@ -92,6 +92,7 @@ create table public.transactions (
   seller_id uuid not null references public.profiles(id) on delete restrict,
   quantity integer not null check (quantity > 0),
   status public.transaction_status not null default 'PENDING',
+  stock_reserved_at timestamptz,
   meeting_point_id uuid references public.meeting_points(id) on delete restrict,
   meeting_at timestamptz,
   payment_method text check (payment_method in ('CASH','TRANSFER','OTHER')),
@@ -262,8 +263,8 @@ begin
   select * into pub from public.publications where id=req.publication_id for update;
   if pub.status <> 'AVAILABLE' or pub.stock < req.quantity then raise exception 'No hay stock suficiente'; end if;
   update public.transaction_requests set status='ACCEPTED' where id=req.id;
-  update public.publications set status='PENDING' where id=pub.id;
-  insert into public.transactions(request_id,publication_id,buyer_id,seller_id,quantity) values(req.id,pub.id,req.buyer_id,req.seller_id,req.quantity) returning * into tx;
+  update public.publications set stock=pub.stock-req.quantity, status=case when pub.stock-req.quantity=0 then 'PENDING'::public.publication_status else 'AVAILABLE'::public.publication_status end where id=pub.id;
+  insert into public.transactions(request_id,publication_id,buyer_id,seller_id,quantity,stock_reserved_at) values(req.id,pub.id,req.buyer_id,req.seller_id,req.quantity,now()) returning * into tx;
   return tx;
 end; $$;
 
@@ -281,19 +282,19 @@ language plpgsql security definer set search_path = public as $$
 declare tx public.transactions; pub public.publications;
 begin select * into tx from public.transactions where id=p_transaction_id for update;
   if not found or tx.status not in ('SCHEDULED','DELIVERED','RECEIVED') then raise exception 'La operación no está lista para confirmar'; end if;
-  if p_action='DELIVERY' and tx.seller_id=auth.uid() then update public.transactions set delivered_at=now(),status=case when received_at is not null then 'COMPLETED' else 'DELIVERED' end where id=tx.id returning * into tx;
-  elsif p_action='RECEPTION' and tx.buyer_id=auth.uid() then update public.transactions set received_at=now(),status=case when delivered_at is not null then 'COMPLETED' else 'RECEIVED' end where id=tx.id returning * into tx;
+  if p_action='DELIVERY' and tx.seller_id=auth.uid() then update public.transactions set delivered_at=now(),status=case when received_at is not null then 'COMPLETED'::public.transaction_status else 'DELIVERED'::public.transaction_status end where id=tx.id returning * into tx;
+  elsif p_action='RECEPTION' and tx.buyer_id=auth.uid() then update public.transactions set received_at=now(),status=case when delivered_at is not null then 'COMPLETED'::public.transaction_status else 'RECEIVED'::public.transaction_status end where id=tx.id returning * into tx;
   else raise exception 'Confirmación no autorizada'; end if;
-  if tx.status='COMPLETED' then select * into pub from public.publications where id=tx.publication_id for update; update public.publications set stock=pub.stock-tx.quantity,status=case when pub.stock-tx.quantity=0 then 'COMPLETED' else 'AVAILABLE' end,completed_at=case when pub.stock-tx.quantity=0 then now() else null end where id=pub.id; update public.transaction_requests set status='COMPLETED' where id=tx.request_id; update public.transactions set completed_at=now() where id=tx.id returning * into tx; end if;
+  if tx.status='COMPLETED' then select * into pub from public.publications where id=tx.publication_id for update; update public.publications set stock=case when tx.stock_reserved_at is null then pub.stock-tx.quantity else pub.stock end,status=case when (case when tx.stock_reserved_at is null then pub.stock-tx.quantity else pub.stock end)=0 then 'COMPLETED' else 'AVAILABLE' end,completed_at=case when (case when tx.stock_reserved_at is null then pub.stock-tx.quantity else pub.stock end)=0 then now() else null end where id=pub.id; update public.transaction_requests set status='COMPLETED' where id=tx.request_id; update public.transactions set completed_at=now() where id=tx.id returning * into tx; end if;
   return tx;
 end; $$;
 
 create or replace function public.cancel_transaction(p_transaction_id uuid) returns void
 language plpgsql security definer set search_path = public as $$
-declare tx public.transactions;
+declare tx public.transactions; pub public.publications;
 begin select * into tx from public.transactions where id=p_transaction_id for update;
   if not found or auth.uid() not in (tx.buyer_id,tx.seller_id) or tx.status in ('COMPLETED','CANCELLED') then raise exception 'No puedes cancelar esta operación'; end if;
-  update public.transactions set status='CANCELLED',cancelled_at=now() where id=tx.id; update public.transaction_requests set status='CANCELLED' where id=tx.request_id; update public.publications set status='AVAILABLE' where id=tx.publication_id and stock>0;
+  update public.transactions set status='CANCELLED',cancelled_at=now() where id=tx.id; update public.transaction_requests set status='CANCELLED' where id=tx.request_id; select * into pub from public.publications where id=tx.publication_id for update; update public.publications set stock=case when tx.stock_reserved_at is null then pub.stock else pub.stock+tx.quantity end,status='AVAILABLE',completed_at=null where id=pub.id;
 end; $$;
 
 -- Habilita el canal de mensajes en Database > Replication > supabase_realtime si no aparece automáticamente.
