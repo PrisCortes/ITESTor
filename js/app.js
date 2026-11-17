@@ -1,6 +1,6 @@
 import { supabase, isConfigured, VAPID_PUBLIC_KEY } from './supabaseClient.js';
 
-const state = { session: null, profile: null, careers: [], publications: [], detailPublication: null, editingPublication: null, imagesToDelete: new Set(), activeLoanRequest: null, chatsChannel: null, chatsRefreshTimer: null, chatsFallbackTimer: null, chatsLoading: false, chatsRefreshQueued: false, publicationsChannel: null, publicationsRefreshTimer: null, favoriteIds: new Set(), isAdmin: false, searchTimer: null, profileEditing: false, profileTab: 'publications', pendingAvatarFile: null, pendingAvatarPreview: null };
+const state = { session: null, profile: null, careers: [], publications: [], detailPublication: null, editingPublication: null, imagesToDelete: new Set(), activeLoanRequest: null, chatsChannel: null, chatsRefreshTimer: null, chatsFallbackTimer: null, chatsLoading: false, chatsRefreshQueued: false, publicationsChannel: null, publicationsRefreshTimer: null, favoriteIds: new Set(), isAdmin: false, searchTimer: null, profileEditing: false, profileTab: 'publications', pendingAvatarFile: null, pendingAvatarPreview: null, avatarCrop: { zoom: 1, x: 50, y: 50 } };
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, char => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[char]));
@@ -11,7 +11,7 @@ function empty(message, icon = '◌') { return `<article class="empty-state"><sp
 function requireConfig() { if (isConfigured) return true; toast('Configura Supabase en js/config.js antes de usar esta acción.', 'error'); return false; }
 function requireAuth() { if (!requireConfig()) return false; if (state.session) return true; openAuth(); toast('Inicia sesión para continuar.', 'error'); return false; }
 function urlBase64ToUint8Array(value) { const padding = '='.repeat((4 - value.length % 4) % 4); const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/'); return Uint8Array.from(atob(base64), char => char.charCodeAt(0)); }
-async function enablePushNotifications() { if (!requireAuth()) return; if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return toast('Este navegador no admite notificaciones push.', 'error'); const permission = await Notification.requestPermission(); if (permission !== 'granted') return toast(permission === 'denied' ? 'Las notificaciones están bloqueadas en este navegador.' : 'No se concedió permiso para notificaciones.', 'error'); if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.includes('TU_CLAVE')) return toast('Falta configurar la clave pública VAPID para activar notificaciones push.', 'error'); const registration = await navigator.serviceWorker.ready; const subscription = await registration.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY) }); const json = subscription.toJSON(); const { error } = await supabase.from('push_subscriptions').upsert({ user_id:state.session.user.id, endpoint:subscription.endpoint, p256dh:json.keys?.p256dh, auth:json.keys?.auth, revoked_at:null }, { onConflict:'endpoint' }); if (error) return toast(error.message, 'error'); toast('Notificaciones activadas en este dispositivo.', 'success'); }
+async function enablePushNotifications() { if (!requireAuth()) return; if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return toast('Este navegador no admite notificaciones push.', 'error'); const permission = await Notification.requestPermission(); if (permission !== 'granted') return toast(permission === 'denied' ? 'Las notificaciones están bloqueadas en este navegador.' : 'No se concedió permiso para notificaciones.', 'error'); if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.includes('TU_CLAVE')) return toast('Falta configurar la clave pública VAPID para activar notificaciones push.', 'error'); try { const registration = await navigator.serviceWorker.ready; const existing = await registration.pushManager.getSubscription(); const subscription = existing || await registration.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY) }); const json = subscription.toJSON(); const { error } = await supabase.from('push_subscriptions').upsert({ user_id:state.session.user.id, endpoint:subscription.endpoint, p256dh:json.keys?.p256dh, auth:json.keys?.auth, revoked_at:null }, { onConflict:'endpoint' }); if (error) return toast(error.message, 'error'); toast('Notificaciones activadas en este dispositivo.', 'success'); } catch (error) { toast(`No se pudieron activar las notificaciones: ${error.message}`, 'error'); } }
 
 function syncFloatingFields(root = document) {
   $$('.floating-field', root).forEach(field => {
@@ -134,7 +134,7 @@ function openAuth() { openModal('auth-template'); $('#login-form').hidden = fals
 async function signIn(form) { if (!requireConfig()) return; const formData = new FormData(form); if (!validInstitutionalEmail(formData.get('email'))) return toast('Usa únicamente un correo @itesa.edu.mx.', 'error'); const { error } = await supabase.auth.signInWithPassword({ email: formData.get('email').trim(), password: formData.get('password') }); if (error) return toast(error.message, 'error'); toast('Sesión iniciada.', 'success'); closeModal(); await refreshSession(); }
 async function register(form) { if (!requireConfig()) return; const data = new FormData(form); if (!validInstitutionalEmail(data.get('email'))) return toast('El correo debe terminar exactamente en @itesa.edu.mx.', 'error'); if (data.get('password') !== data.get('passwordConfirm')) return toast('Las contraseñas no coinciden.', 'error'); const { error } = await supabase.auth.signUp({ email:data.get('email').trim(), password:data.get('password'), options:{ data:{ name:data.get('name').trim(), career_id:data.get('career_id') }, emailRedirectTo: `${location.origin}${location.pathname}` } }); if (error) return toast(error.message, 'error'); toast('Revisa tu correo institucional para confirmar tu cuenta.', 'success'); }
 async function recoverPassword() { const email = prompt('Escribe tu correo institucional para recuperar tu contraseña:'); if (!email) return; if (!validInstitutionalEmail(email)) return toast('Usa un correo @itesa.edu.mx.', 'error'); const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}${location.pathname}` }); toast(error ? error.message : 'Te enviamos un enlace de recuperación.', error ? 'error' : 'success'); }
-async function refreshSession() { if (!isConfigured) return renderProfile(); const { data:{session} } = await supabase.auth.getSession(); state.session = session; state.profile = null; state.isAdmin = false; if (session) { const [{ data:profile }, { data:role }] = await Promise.all([supabase.from('profiles').select('id,name,email,career_id,rating_average,avatar_path,avatar_url,careers(code,name)').eq('id',session.user.id).maybeSingle(), supabase.from('user_roles').select('role').eq('user_id',session.user.id).maybeSingle()]); state.profile = profile; state.isAdmin = role?.role === 'ADMIN'; await loadFavorites(); } const sessionButton = $('#session-button'); const signedIn = Boolean(state.session); sessionButton.innerHTML = signedIn ? '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5"/><path d="M14 8l4 4-4 4"/><path d="M7 12h11"/></svg>' : '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5"/><path d="M10 8l-4 4 4 4"/><path d="M17 12H6"/></svg>'; sessionButton.setAttribute('aria-label', signedIn ? 'Cerrar sesión' : 'Abrir inicio de sesión'); syncChatsRealtime(location.hash === '#chats'); syncPublicationsRealtime(); renderProfile(); }
+async function refreshSession() { if (!isConfigured) return renderProfile(); const { data:{session} } = await supabase.auth.getSession(); state.session = session; state.profile = null; state.isAdmin = false; if (session) { const [{ data:profile }, { data:role }] = await Promise.all([supabase.from('profiles').select('id,name,email,career_id,rating_average,avatar_path,avatar_url,careers(code,name)').eq('id',session.user.id).maybeSingle(), supabase.from('user_roles').select('role').eq('user_id',session.user.id).maybeSingle()]); state.profile = profile; state.isAdmin = role?.role === 'ADMIN'; await loadFavorites(); } const sessionButton = $('#session-button'); const signedIn = Boolean(state.session); sessionButton.innerHTML = signedIn ? '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5"/><path d="M14 8l4 4-4 4"/><path d="M7 12h11"/></svg>' : '<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5"/><path d="M10 8l-4 4 4 4"/><path d="M17 12H6"/></svg>'; sessionButton.setAttribute('aria-label', signedIn ? 'Cerrar sesión' : 'Abrir inicio de sesión'); const navAvatar = $('#nav-profile-icon'); if (navAvatar) navAvatar.innerHTML = state.profile?.avatar_url ? `<img src="${escapeHtml(state.profile.avatar_url)}" alt="" />` : '<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 22c.8-4.1 3.4-6 8-6s7.2 1.9 8 6"/></svg>'; syncChatsRealtime(location.hash === '#chats'); syncPublicationsRealtime(); renderProfile(); }
 
 function syncProfileTabsHints() {
   const scroller = $('#profile-tabs-scroller');
@@ -163,7 +163,7 @@ function renderProfile() {
   const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
   const avatarSrc = state.pendingAvatarPreview || profile.avatar_url;
   const avatarNode = avatarSrc
-    ? `<img class="avatar" id="profile-avatar-preview" src="${escapeHtml(avatarSrc)}" alt="${escapeHtml(displayName)}" />`
+    ? `<img class="avatar" id="profile-avatar-preview" src="${escapeHtml(avatarSrc)}" alt="${escapeHtml(displayName)}" style="object-position:${state.avatarCrop.x}% ${state.avatarCrop.y}%;transform:scale(${state.avatarCrop.zoom})" />`
     : `<span class="avatar avatar-fallback" id="profile-avatar-preview" aria-label="${escapeHtml(displayName)}">${escapeHtml(displayName.slice(0, 1).toUpperCase())}</span>`;
 
   const cardContent = state.profileEditing
@@ -175,6 +175,7 @@ function renderProfile() {
           </label>
           <input id="profile-avatar-input" class="sr-only" name="avatar" type="file" accept="image/jpeg,image/png,image/webp" />
         </div>
+        ${state.pendingAvatarFile ? `<div class="avatar-crop-controls" aria-label="Ajustar fotografía"><strong>Ajustar encuadre</strong><label>Zoom <input data-avatar-crop="zoom" type="range" min="1" max="2.5" step="0.05" value="${state.avatarCrop.zoom}" /></label><label>Horizontal <input data-avatar-crop="x" type="range" min="0" max="100" step="1" value="${state.avatarCrop.x}" /></label><label>Vertical <input data-avatar-crop="y" type="range" min="0" max="100" step="1" value="${state.avatarCrop.y}" /></label><small>La imagen se recorta y optimiza automáticamente al guardar.</small></div>` : ''}
         <div class="profile-info">
           <input id="profile-name" class="profile-name-input" name="name" maxlength="120" required aria-label="Nombre de usuario" value="${escapeHtml(displayName)}" />
           <p class="profile-email-text">${escapeHtml(profile.email || state.session.user.email)}</p>
@@ -233,15 +234,14 @@ async function saveProfile(form) {
   let avatarUrl = state.profile?.avatar_url || null;
   const file = state.pendingAvatarFile || data.get('avatar');
   if (file && file.size > 0) {
-    if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 2097152) {
-      return toast('La foto debe ser JPG, PNG o WEBP de máximo 2 MB.', 'error');
-    }
-    const extension = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 15 * 1024 * 1024) return toast('Selecciona una foto JPG, PNG o WEBP de hasta 15 MB.', 'error');
+    const optimized = await prepareAvatarUpload(file, state.avatarCrop);
+    const extension = 'webp';
     const newPath = `${state.session.user.id}/avatar-${crypto.randomUUID()}.${extension}`;
-    let upload = await supabase.storage.from('profile-images').upload(newPath, file, { contentType: file.type, upsert: true });
+    let upload = await supabase.storage.from('profile-images').upload(newPath, optimized, { contentType: optimized.type, upsert: true });
     let bucketUsed = 'profile-images';
     if (upload.error) {
-      upload = await supabase.storage.from('publication-images').upload(newPath, file, { contentType: file.type, upsert: true });
+      upload = await supabase.storage.from('publication-images').upload(newPath, optimized, { contentType: optimized.type, upsert: true });
       bucketUsed = 'publication-images';
     }
     if (upload.error) return toast(`No se pudo subir la imagen: ${upload.error.message}`, 'error');
@@ -254,8 +254,30 @@ async function saveProfile(form) {
   state.profileEditing = false;
   state.pendingAvatarFile = null;
   state.pendingAvatarPreview = null;
+  state.avatarCrop = { zoom: 1, x: 50, y: 50 };
   toast('Perfil actualizado.', 'success');
   await refreshSession();
+}
+
+async function prepareAvatarUpload(file, crop) {
+  const source = URL.createObjectURL(file);
+  try {
+    const image = await new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = source; });
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const context = canvas.getContext('2d');
+    const baseScale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
+    const scale = baseScale * Number(crop?.zoom || 1);
+    const width = image.naturalWidth * scale;
+    const height = image.naturalHeight * scale;
+    const x = (size - width) * (Number(crop?.x ?? 50) / 100);
+    const y = (size - height) * (Number(crop?.y ?? 50) / 100);
+    context.drawImage(image, x, y, width, height);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', .86));
+    if (!blob) throw new Error('No fue posible procesar la imagen.');
+    return new File([blob], 'avatar.webp', { type: 'image/webp' });
+  } finally { URL.revokeObjectURL(source); }
 }
 
 async function loadProfileTab(tab) {
@@ -276,7 +298,7 @@ async function loadProfileTab(tab) {
     return;
   }
   const column = tab === 'sales' ? 'seller_id' : 'buyer_id';
-  const { data, error } = await supabase.from('transactions').select('id,status,completed_at,created_at,buyer_id,seller_id,publication:publications(price,title,publication_images(public_url,position))').eq(column,userId).eq('status','COMPLETED').order('completed_at',{ascending:false});
+  const { data, error } = await supabase.from('transactions').select('id,status,completed_at,created_at,buyer_id,seller_id,publication:publications(id,owner_id,title,description,condition,price,stock,operation_type,status,career_id,publication_images(public_url,position))').eq(column,userId).eq('status','COMPLETED').order('completed_at',{ascending:false});
   if (error) { root.innerHTML = empty('No fue posible cargar las operaciones.', '⚠'); return; }
   const counterpartIds = [...new Set((data || []).map(row => row.buyer_id === userId ? row.seller_id : row.buyer_id))];
   const { data:people } = counterpartIds.length ? await supabase.from('public_profile_summaries').select('id,name').in('id',counterpartIds) : { data:[] };
@@ -284,8 +306,30 @@ async function loadProfileTab(tab) {
   root.innerHTML = (data || []).length ? data.map(row => {
     const counterpart = row.buyer_id === userId ? row.seller_id : row.buyer_id;
     const publication = row.publication || {};
-    return `<article class="list-card transaction-card"><div class="transaction-thumb">${publication.publication_images?.[0]?.public_url ? `<img src="${escapeHtml(publication.publication_images[0].public_url)}" alt="" />` : '◫'}</div><div><h3>${escapeHtml(publication.title || 'Operación')}</h3><p>${tab === 'sales' ? 'Comprador' : 'Vendedor'}: ${escapeHtml(names.get(counterpart) || 'Estudiante ITESA')}</p><small>Concluida · ${new Date(row.completed_at || row.created_at).toLocaleDateString('es-MX')}</small></div><strong>${publication.price ? `$${Number(publication.price).toFixed(2)}` : 'Intercambio'}</strong></article>`;
+    return `<article class="list-card transaction-card"><div class="transaction-thumb">${publication.publication_images?.[0]?.public_url ? `<img src="${escapeHtml(publication.publication_images[0].public_url)}" alt="" />` : '◫'}</div><div><h3>${escapeHtml(publication.title || 'Operación')}</h3><p>${tab === 'sales' ? 'Comprador' : 'Vendedor'}: ${escapeHtml(names.get(counterpart) || 'Estudiante ITESA')}</p><small>Concluida · ${new Date(row.completed_at || row.created_at).toLocaleDateString('es-MX')}</small>${tab === 'sales' && publication.id ? `<button class="button compact secondary repost-button" type="button" data-action="repost-publication" data-publication-id="${publication.id}">Volver a publicar</button>` : ''}</div><strong>${publication.price ? `$${Number(publication.price).toFixed(2)}` : 'Intercambio'}</strong></article>`;
   }).join('') : empty(tab === 'sales' ? 'Aún no tienes ventas concluidas.' : 'Aún no tienes compras concluidas.', '◌');
+}
+
+async function repostPublication(publicationId) {
+  if (!requireAuth()) return;
+  const product = await loadPublicationDetail(publicationId);
+  if (!product || product.owner_id !== state.session.user.id) return toast('No fue posible preparar esta publicación.', 'error');
+  state.editingPublication = null; state.imagesToDelete = new Set();
+  location.hash = '#publish';
+  const form = $('#publish-form');
+  form.title.value = product.title; form.description.value = product.description; form.condition.value = product.condition; form.price.value = product.price; form.operation_type.value = product.operation_type; form.stock.value = 1; form.career_id.value = state.profile?.career_id || product.career_id;
+  $('#publish-title').textContent = 'Volver a publicar'; $('#publish-submit').textContent = 'Publicar artículo'; $('#publication-career-field').hidden = true; $('#publication-status-field').hidden = true; $('#cancel-edit').hidden = false; renderCurrentImages(); await copyRepostImages(product, form.images); updatePublishFileUI(form.images); syncFloatingFields(form);
+  toast('Revisa los datos. La nueva publicación tendrá stock de 1.', '');
+}
+
+async function copyRepostImages(product, input) {
+  const transfer = new DataTransfer();
+  const copies = await Promise.all((product.publication_images || []).slice(0, 4).map(async (image, index) => {
+    try { const response = await fetch(image.public_url); if (!response.ok) throw new Error('No disponible'); const blob = await response.blob(); return new File([blob], `imagen-${index + 1}.${blob.type === 'image/png' ? 'png' : 'jpg'}`, { type: blob.type }); } catch { return null; }
+  }));
+  copies.filter(Boolean).forEach(file => transfer.items.add(file));
+  input.files = transfer.files;
+  if ((product.publication_images || []).length && !transfer.files.length) toast('No se pudieron recuperar las fotos anteriores; puedes añadirlas manualmente.', 'error');
 }
 
 async function toggleFavorite(publicationId) {
@@ -371,10 +415,11 @@ async function createTransactionRequest(event, product) {
   location.hash = '#chats';
 }
 
-const chatSelect = 'id,participant_a,participant_b,created_at,updated_at,transaction_requests(id,status,publications(title),transactions(id,status,meeting_at,payment_method,meeting_points(name))),loan_requests(id,title,status,loans(id,status,meeting_point_id,meeting_at,return_meeting_point_id,return_meeting_at,delivery_point:meeting_points!loans_meeting_point_id_fkey(name),return_point:meeting_points!loans_return_meeting_point_id_fkey(name)))';
+const chatSelect = 'id,participant_a,participant_b,created_at,updated_at,transaction_requests(id,status,publications(title),transactions(id,status,completed_at,meeting_at,payment_method,meeting_points(name))),loan_requests(id,title,status,loans(id,status,closed_at,meeting_point_id,meeting_at,return_meeting_point_id,return_meeting_at,delivery_point:meeting_points!loans_meeting_point_id_fkey(name),return_point:meeting_points!loans_return_meeting_point_id_fkey(name)))';
 const asOne = value => Array.isArray(value) ? value[0] : value;
 const chatPreview = value => value && value.length > 52 ? `${value.slice(0, 51)}…` : value;
-const chatTimeOnly = value => new Date(value).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
+const chatListStamp = value => { const date = new Date(value); const today = new Date(); const sameDay = date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth() && date.getDate() === today.getDate(); return sameDay ? date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase() : date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: date.getFullYear() === today.getFullYear() ? undefined : 'numeric' }); };
+function chatFinishedAt(chat) { const transaction = asOne(asOne(chat.transaction_requests)?.transactions); const loan = asOne(asOne(chat.loan_requests)?.loans); return transaction?.completed_at || loan?.closed_at || null; }
 
 function chatRowStatusIcon(message, userId) {
   if (!message || message.sender_id !== userId) return '';
@@ -498,29 +543,14 @@ async function loadChats() {
       const message = chat.lastMessage;
       const finished = chatIsFinished(chat, ratedTxIds, ratedLoanIds);
       const receipt = asOne(message?.message_receipts);
-      const isUnread = Boolean(!finished && message && message.sender_id !== userId && !receipt?.read_at);
-
-      const topRight = finished
-        ? `<button type="button" class="chat-delete-btn" data-action="hide-chat" data-chat-id="${chat.id}" aria-label="Eliminar conversación" title="Eliminar conversación">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-              <path d="M10 11v6"/><path d="M14 11v6"/>
-              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-            </svg>
-          </button>`
-        : isUnread
-          ? '<span class="chat-unread-dot" aria-label="Mensaje sin leer"></span>'
-          : '';
-
-      const previewText = finished
-        ? 'Proceso terminado'
-        : message
-          ? chatPreview(message.content)
-          : 'Aún no hay mensajes';
-
-      const statusIcon = !finished && message ? chatRowStatusIcon(message, userId) : '';
-      const timeText = chatTimeOnly(message?.created_at || chat.updated_at || chat.created_at);
+      const processEndedAt = chatFinishedAt(chat);
+      const messageAfterFinish = Boolean(finished && message && processEndedAt && new Date(message.created_at) > new Date(processEndedAt));
+      const isUnread = Boolean(message && message.sender_id !== userId && !receipt?.read_at && (!finished || messageAfterFinish));
+      const topRight = isUnread ? '<span class="chat-unread-dot" aria-label="Mensaje sin leer"></span>' : '';
+      const previewText = message && (!finished || messageAfterFinish) ? chatPreview(message.content) : 'Proceso terminado';
+      const statusIcon = message && (!finished || messageAfterFinish) ? chatRowStatusIcon(message, userId) : '';
+      const timeText = chatListStamp(message?.created_at || chat.updated_at || chat.created_at);
+      const deleteButton = finished ? `<button type="button" class="chat-delete-btn chat-delete-bottom" data-action="hide-chat" data-chat-id="${chat.id}" aria-label="Eliminar conversación" title="Eliminar conversación"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2 2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>` : '';
 
       return `<article class="chat-row ${isUnread ? 'unread' : ''}" data-chat-id="${chat.id}" role="link" tabindex="0">
         <div class="chat-row-avatar">${avatarMarkup(other, userName)}</div>
@@ -533,6 +563,7 @@ async function loadChats() {
           <div class="chat-row-bottom">
             ${statusIcon}
             <time class="chat-row-time">${escapeHtml(timeText)}</time>
+            ${deleteButton}
           </div>
         </div>
       </article>`;
@@ -704,17 +735,19 @@ async function startPublicationEdit() {
   if (product.owner_id !== state.session.user.id) return toast('Solo puedes editar tus propias publicaciones.', 'error');
   state.editingPublication = product; state.imagesToDelete = new Set(); closeModal(); location.hash = '#publish';
   const form = $('#publish-form'); form.title.value = product.title; form.description.value = product.description; form.condition.value = product.condition; form.price.value = product.price; form.operation_type.value = product.operation_type; form.stock.value = product.stock; form.career_id.value = product.career_id; form.status.value = product.status;
-  $('#publish-title').textContent = 'Editar publicación'; $('#publish-submit').textContent = 'Guardar cambios'; $('#publication-status-field').hidden = false; $('#cancel-edit').hidden = false; renderCurrentImages(); updatePublishFileUI(form.images); syncFloatingFields(form);
+  $('#publish-title').textContent = 'Editar publicación'; $('#publish-submit').textContent = 'Guardar cambios'; $('#publication-career-field').hidden = true; $('#publication-status-field').hidden = false; $('#cancel-edit').hidden = false; form.stock.min = '0'; renderCurrentImages(); updatePublishFileUI(form.images); syncFloatingFields(form);
 }
 
 function resetPublicationMode() {
-  state.editingPublication = null; state.imagesToDelete = new Set(); const form = $('#publish-form'); form.reset(); $('#publish-title').textContent = 'Comparte algo útil'; $('#publish-submit').textContent = 'Publicar artículo'; $('#publication-status-field').hidden = true; $('#cancel-edit').hidden = true; renderCurrentImages(); updatePublishFileUI(form.images); syncFloatingFields(form);
+  state.editingPublication = null; state.imagesToDelete = new Set(); const form = $('#publish-form'); form.reset(); form.stock.value = 1; form.stock.min = '1'; form.career_id.value = state.profile?.career_id || ''; $('#publish-title').textContent = 'Comparte algo útil'; $('#publish-submit').textContent = 'Publicar artículo'; $('#publication-career-field').hidden = true; $('#publication-status-field').hidden = true; $('#cancel-edit').hidden = true; renderCurrentImages(); updatePublishFileUI(form.images); syncFloatingFields(form);
 }
 
 function validatePublicationForm(form, retainedCount) {
   const fields = new FormData(form); const images = [...form.images.files];
   if (images.length + retainedCount > 4) { toast('El total de imágenes no puede superar cuatro.', 'error'); return null; }
   if (images.some(file => !['image/jpeg','image/png'].includes(file.type))) { toast('Solo se aceptan imágenes JPG, JPEG o PNG.', 'error'); return null; }
+  if (!state.editingPublication && Number(fields.get('stock')) < 1) { toast('La cantidad inicial debe ser al menos 1.', 'error'); return null; }
+  if (state.editingPublication && Number(fields.get('stock')) < 0) { toast('La cantidad no puede ser negativa.', 'error'); return null; }
   if (fields.get('operation_type') === 'SALE' && (!fields.get('price') || Number(fields.get('price')) <= 0)) { toast('Indica un precio válido para una venta.', 'error'); return null; }
   return { fields, images };
 }
@@ -736,12 +769,12 @@ async function publish(form) {
   const valid = validatePublicationForm(form, retained.length); if (!valid) return;
   const { fields, images } = valid;
   if (!current) {
-    const payload = { owner_id:state.session.user.id, title:fields.get('title').trim(), description:fields.get('description').trim(), operation_type:fields.get('operation_type'), condition:fields.get('condition'), price:fields.get('price') || 0, stock:Number(fields.get('stock')), career_id:fields.get('career_id') };
+    const payload = { owner_id:state.session.user.id, title:fields.get('title').trim(), description:fields.get('description').trim(), operation_type:fields.get('operation_type'), condition:fields.get('condition'), price:fields.get('price') || 0, stock:Number(fields.get('stock')), career_id:state.profile?.career_id };
     const { data:publication, error } = await supabase.from('publications').insert(payload).select().single(); if (error) return toast(error.message, 'error');
     await uploadPublicationImages(publication, images, 0); form.reset(); updatePublishFileUI(form.images); syncFloatingFields(form); toast('Publicación creada.', 'success'); location.hash = '#home'; return;
   }
   if (current.owner_id !== state.session.user.id) return toast('No tienes permiso para editar esta publicación.', 'error');
-  const status = fields.get('status'); const payload = { title:fields.get('title').trim(), description:fields.get('description').trim(), operation_type:fields.get('operation_type'), condition:fields.get('condition'), price:fields.get('price') || 0, stock:Number(fields.get('stock')), career_id:fields.get('career_id'), status, completed_at:status === 'COMPLETED' ? (current.completed_at || new Date().toISOString()) : null };
+  const stock = Number(fields.get('stock')); const status = stock === 0 ? 'COMPLETED' : fields.get('status'); const payload = { title:fields.get('title').trim(), description:fields.get('description').trim(), operation_type:fields.get('operation_type'), condition:fields.get('condition'), price:fields.get('price') || 0, stock, career_id:current.career_id, status, completed_at:status === 'COMPLETED' ? (current.completed_at || new Date().toISOString()) : null };
   const { data:updated, error } = await supabase.from('publications').update(payload).eq('id',current.id).eq('owner_id',state.session.user.id).select().single(); if (error || !updated) return toast(error?.message || 'No fue posible actualizar la publicación.', 'error');
   for (const image of current.publication_images.filter(image => state.imagesToDelete.has(image.id))) { const removed = await supabase.storage.from('publication-images').remove([image.storage_path]); if (removed.error) return toast(`No se pudo eliminar una imagen: ${removed.error.message}`, 'error'); const deleted = await supabase.from('publication_images').delete().eq('id',image.id).eq('publication_id',current.id); if (deleted.error) return toast(deleted.error.message, 'error'); }
   for (let index = 0; index < retained.length; index++) { const positioned = await supabase.from('publication_images').update({ position:index }).eq('id',retained[index].id).eq('publication_id',current.id); if (positioned.error) return toast(positioned.error.message, 'error'); }
@@ -783,6 +816,7 @@ document.addEventListener('click', async event => {
   if (action === 'toggle-favorite') return toggleFavorite(trigger.dataset.publicationId);
   if (action === 'request-publication') { const item = state.publications.find(publication => publication.id === trigger.dataset.publicationId) || await loadPublicationDetail(trigger.dataset.publicationId); return openRequestForm(item); }
   if (action === 'edit-card-publication') { state.detailPublication = await loadPublicationDetail(trigger.dataset.publicationId); return startPublicationEdit(); }
+  if (action === 'repost-publication') return repostPublication(trigger.dataset.publicationId);
   if (action === 'report-publication-confirm') { closeCardMenus(); return openReportDialog('publication', trigger.dataset.publicationId); }
   if (action === 'report-user') return openReportDialog('user', trigger.dataset.userId);
   if (action === 'open-public-profile') return openPublicProfile(trigger.dataset.userId);
@@ -799,24 +833,22 @@ document.addEventListener('submit', event => {
 });
 document.addEventListener('input', event => {
   if (event.target.closest('.floating-field')) syncFloatingFields(event.target.closest('.floating-field').parentElement);
+  if (event.target.dataset.avatarCrop) { state.avatarCrop[event.target.dataset.avatarCrop] = Number(event.target.value); const preview = $('#profile-avatar-preview'); if (preview) { preview.style.objectPosition = `${state.avatarCrop.x}% ${state.avatarCrop.y}%`; preview.style.transform = `scale(${state.avatarCrop.zoom})`; } }
   if (event.target.id === 'search-input' || event.target.closest('#search-filters')) triggerSearchUpdate();
 });
 document.addEventListener('change', event => {
   if (event.target.closest('.floating-field')) syncFloatingFields(event.target.closest('.floating-field').parentElement);
+  if (event.target.id === 'pub-stock' && state.editingPublication && Number(event.target.value) === 0) { $('#pub-status').value = 'COMPLETED'; syncFloatingFields($('#pub-status').closest('.form-group')); }
   if (event.target.id === 'pub-images') updatePublishFileUI(event.target);
   if (event.target.id === 'profile-avatar-input') {
     const file = event.target.files?.[0];
     if (file) {
+      if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 15 * 1024 * 1024) { event.target.value = ''; return toast('Selecciona una foto JPG, PNG o WEBP de hasta 15 MB.', 'error'); }
+      if (state.pendingAvatarPreview) URL.revokeObjectURL(state.pendingAvatarPreview);
       state.pendingAvatarFile = file;
       state.pendingAvatarPreview = URL.createObjectURL(file);
-      const preview = $('#profile-avatar-preview');
-      if (preview) {
-        if (preview.tagName === 'IMG') {
-          preview.src = state.pendingAvatarPreview;
-        } else {
-          preview.outerHTML = `<img class="avatar" id="profile-avatar-preview" src="${state.pendingAvatarPreview}" alt="Vista previa" />`;
-        }
-      }
+      state.avatarCrop = { zoom: 1, x: 50, y: 50 };
+      renderProfile();
     }
   }
   if (event.target.closest('#search-filters')) triggerSearchUpdate();

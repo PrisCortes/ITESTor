@@ -6,11 +6,11 @@
     <meta name="theme-color" content="#123f4b" />
     <meta name="description" content="Marketplace universitario para estudiantes del ITESA." />
     <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg" />
-    <link rel="stylesheet" href="css/variables.css?v=20261116-4" />
-    <link rel="stylesheet" href="css/base.css?v=20261116-4" />
-    <link rel="stylesheet" href="css/components.css?v=20261116-4" />
-    <link rel="stylesheet" href="css/responsive.css?v=20261116-4" />
+    <link rel="icon" type="image/png" href="assets/icons/itestore-icon.png" />
+    <link rel="stylesheet" href="css/variables.css?v=20261117-1" />
+    <link rel="stylesheet" href="css/base.css?v=20261117-1" />
+    <link rel="stylesheet" href="css/components.css?v=20261117-1" />
+    <link rel="stylesheet" href="css/responsive.css?v=20261117-1" />
     <title>ITEStore | ITESA</title>
   </head>
   <body>
@@ -76,7 +76,7 @@
             </div>
           </div>
           <div class="form-group">
-            <div class="floating-field">
+            <div class="floating-field" id="publication-career-field" hidden>
               <select id="pub-career" name="career_id" required><option value="">Selecciona una carrera</option></select>
               <label for="pub-career">Carrera</label>
             </div>
@@ -100,7 +100,7 @@
             <div id="pub-images-preview" class="selected-images-preview" hidden></div>
           </div>
           <button class="button success" id="publish-submit" type="submit">Publicar artículo</button>
-          <button class="link-button" id="cancel-edit" type="button" hidden>Cancelar edición</button>
+          <button class="button secondary cancel-edit-button" id="cancel-edit" type="button" hidden>Cancelar edición</button>
         </form>
       </section>
 
@@ -116,11 +116,11 @@
     </main>
 
     <nav class="bottom-nav" aria-label="Navegación principal">
-      <a href="#home" data-nav="home" aria-label="Inicio"><span class="nav-icon" aria-hidden="true">⌂</span><span class="nav-label">Inicio</span></a>
-      <a href="#search" data-nav="search" aria-label="Buscar"><span class="nav-icon" aria-hidden="true">⌕</span><span class="nav-label">Buscar</span></a>
+      <a href="#home" data-nav="home" aria-label="Inicio"><span class="nav-icon" aria-hidden="true"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span><span class="nav-label">Inicio</span></a>
+      <a href="#search" data-nav="search" aria-label="Buscar"><span class="nav-icon" aria-hidden="true"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></span><span class="nav-label">Buscar</span></a>
       <a href="#publish" data-nav="publish" class="publish-nav" aria-label="Publicar"><span class="nav-icon" aria-hidden="true">＋</span><span class="nav-label">Publicar</span></a>
       <a href="#chats" data-nav="chats" aria-label="Chats"><span class="nav-icon" aria-hidden="true"><svg class="nav-svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.5C18.6 10.6 20 12.4 20 14.5c0 1.4-.6 2.7-1.6 3.7L19 21l-3.2-1c-.9.3-1.8.5-2.8.5-2.5 0-4.7-1.1-6-2.8"/><path d="M10 4C5.6 4 2 6.9 2 10.5c0 1.8.9 3.4 2.3 4.6L3.5 18l3.3-1.1c1 .3 2.1.6 3.2.6 4.4 0 8-2.9 8-6.5S14.4 4 10 4z"/><circle cx="7" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="10.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="13" cy="10.5" r="1.1" fill="currentColor" stroke="none"/></svg></span><span class="nav-label">Chats</span></a>
-      <a href="#profile" data-nav="profile" aria-label="Perfil"><span class="nav-icon" aria-hidden="true">☺</span><span class="nav-label">Perfil</span></a>
+      <a href="#profile" data-nav="profile" aria-label="Perfil"><span class="nav-icon nav-profile-icon" id="nav-profile-icon" aria-hidden="true"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 22c.8-4.1 3.4-6 8-6s7.2 1.9 8 6"/></svg></span><span class="nav-label">Perfil</span></a>
     </nav>
 
     <div id="modal-root" aria-live="polite"></div><div id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></div>
@@ -220,6 +220,6 @@
         </section>
       </div>
     </template>
-    <script>if(location.protocol==='file:'){document.body.innerHTML='<main class="page-shell"><article class="empty-state"><span class="empty-icon">⚠</span>ITEStore debe abrirse desde un servidor local. Usa <strong>http://localhost:8000</strong>, no el archivo HTML directamente.</article></main>';}else{const script=document.createElement('script');script.type='module';script.src='js/app.js?v=20261116-4';document.body.append(script);}</script>
+    <script>if(location.protocol==='file:'){document.body.innerHTML='<main class="page-shell"><article class="empty-state"><span class="empty-icon">⚠</span>ITEStore debe abrirse desde un servidor local. Usa <strong>http://localhost:8000</strong>, no el archivo HTML directamente.</article></main>';}else{const script=document.createElement('script');script.type='module';script.src='js/app.js?v=20261117-1';document.body.append(script);}</script>
   </body>
 </html>

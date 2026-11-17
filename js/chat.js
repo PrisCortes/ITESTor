@@ -623,7 +623,7 @@ async function openOtherUserProfile() {
 async function syncPresence() {
   if (userId && id) {
     await supabase.from('active_chat_sessions').upsert(
-      { user_id: userId, chat_id: id, expires_at: new Date(Date.now() + 90000).toISOString(), updated_at: new Date().toISOString() },
+      { user_id: userId, chat_id: id, expires_at: new Date(Date.now() + 25000).toISOString(), updated_at: new Date().toISOString() },
       { onConflict: 'user_id,chat_id' }
     );
   }
@@ -720,7 +720,7 @@ $('#message-form').addEventListener('submit', async event => {
     return loadMessages();
   }
   if (sent?.id) {
-    supabase.functions.invoke('send-push', { body: { messageId: sent.id } }).catch(() => {});
+    supabase.functions.invoke('send-push', { body: { messageId: sent.id } }).then(({ error }) => { if (error) console.warn('No se pudo enviar la notificación push:', error.message); });
   }
   loadMessages();
 });
@@ -878,7 +878,7 @@ document.addEventListener('click', async event => {
   }
 });
 
-setInterval(syncPresence, 30000);
+setInterval(syncPresence, 8000);
 startFallbackRefresh();
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') queueReload();
