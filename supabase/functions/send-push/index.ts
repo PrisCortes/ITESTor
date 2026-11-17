@@ -18,11 +18,12 @@ Deno.serve(async request => {
     if (userError || !user) return new Response('No autorizado', { status:401, headers:cors });
     const { messageId } = await request.json();
     if (!messageId) return new Response('messageId requerido', { status:400, headers:cors });
-    const { data:message } = await client.from('messages').select('id,chat_id,sender_id').eq('id',messageId).maybeSingle();
+    const { data:message } = await client.from('messages').select('id,chat_id,sender_id,content').eq('id',messageId).maybeSingle();
     if (!message || message.sender_id !== user.id) return new Response('Evento no autorizado', { status:403, headers:cors });
     const { data:chat } = await client.from('chats').select('participant_a,participant_b').eq('id',message.chat_id).single();
     const recipientId = chat?.participant_a === user.id ? chat?.participant_b : chat?.participant_a;
     if (!recipientId) return new Response('Destinatario no encontrado', { status:404, headers:cors });
+    const { data:sender } = await client.from('profiles').select('name').eq('id',message.sender_id).maybeSingle();
     const { error:dispatchError } = await client.from('push_dispatches').insert({ message_id:message.id, recipient_id:recipientId });
     if (dispatchError?.code === '23505') return Response.json({ duplicate:true }, { headers:cors });
     if (dispatchError) throw dispatchError;
@@ -34,7 +35,9 @@ Deno.serve(async request => {
     if (!publicKey || !privateKey || !subject) throw new Error('Faltan secretos VAPID en la función');
     webpush.setVapidDetails(subject, publicKey, privateKey);
     const { data:subscriptions } = await client.from('push_subscriptions').select('id,endpoint,p256dh,auth').eq('user_id',recipientId).is('revoked_at',null);
-    const payload = JSON.stringify({ title:'ITEStore', body:'Tienes un mensaje nuevo.', url:`/chat.html?v=20261117-4&id=${message.chat_id}`, tag:`message-${message.id}` });
+    const senderName = String(sender?.name || 'Usuario de ITEStore').trim();
+    const messageBody = String(message.content || 'Te envió un mensaje.').replace(/\s+/g, ' ').trim().slice(0, 180);
+    const payload = JSON.stringify({ title:senderName, body:messageBody || 'Te envió un mensaje.', url:`/chat.html?v=20261117-5&id=${message.chat_id}`, tag:`message-${message.id}` });
     await Promise.all((subscriptions || []).map(async subscription => {
       try { await webpush.sendNotification({ endpoint:subscription.endpoint, keys:{ p256dh:subscription.p256dh, auth:subscription.auth } }, payload); }
       catch (error: any) { const status = error?.statusCode; if (status === 404 || status === 410) await client.from('push_subscriptions').update({ revoked_at:new Date().toISOString() }).eq('id',subscription.id); else console.error('Push no entregado', error); }

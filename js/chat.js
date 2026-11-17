@@ -1,5 +1,7 @@
 import { supabase, isConfigured } from './supabaseClient.js';
 
+const CHAT_BUILD = '20261117-5';
+
 function syncChatViewport() {
   const height = Math.round(window.visualViewport?.height || window.innerHeight);
   document.documentElement.style.setProperty('--chat-viewport-height', `${height}px`);
@@ -8,6 +10,20 @@ syncChatViewport();
 window.addEventListener('resize', syncChatViewport);
 window.visualViewport?.addEventListener('resize', syncChatViewport);
 window.visualViewport?.addEventListener('scroll', syncChatViewport);
+
+async function returnToChats(event) {
+  event.preventDefault();
+  const resetKey = `itestore-chat-return-reset-${CHAT_BUILD}`;
+  try {
+    if (!localStorage.getItem(resetKey)) {
+      const registrations = await navigator.serviceWorker?.getRegistrations?.() || [];
+      await Promise.all(registrations.map(registration => registration.unregister()));
+      if ('caches' in window) await Promise.all((await caches.keys()).map(key => caches.delete(key)));
+      localStorage.setItem(resetKey, '1');
+    }
+  } catch (error) { console.warn('No se pudo limpiar la versión anterior de la aplicación:', error); }
+  location.replace(`index.html?v=${CHAT_BUILD}&from=chat#chats`);
+}
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -773,6 +789,8 @@ document.addEventListener('submit', async event => {
 });
 
 document.addEventListener('click', async event => {
+  if (event.target.closest('#chat-back')) return returnToChats(event);
+
   // Abrir modal de programar / reprogramar
   const openScheduleBtn = event.target.closest('[data-open-schedule]');
   if (openScheduleBtn) {
