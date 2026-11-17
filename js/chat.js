@@ -1,5 +1,14 @@
 import { supabase, isConfigured } from './supabaseClient.js';
 
+function syncChatViewport() {
+  const height = Math.round(window.visualViewport?.height || window.innerHeight);
+  document.documentElement.style.setProperty('--chat-viewport-height', `${height}px`);
+}
+syncChatViewport();
+window.addEventListener('resize', syncChatViewport);
+window.visualViewport?.addEventListener('resize', syncChatViewport);
+window.visualViewport?.addEventListener('scroll', syncChatViewport);
+
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 const id = new URLSearchParams(location.search).get('id');

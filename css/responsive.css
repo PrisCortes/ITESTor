@@ -38,12 +38,18 @@
   }
   .publish-nav .nav-icon{
     margin:0;
-    border:0;
-    width:auto;
-    height:auto;
-    background:transparent;
-    color:inherit;
+    width:34px;
+    height:34px;
+    flex:0 0 34px;
+    background:var(--orange);
+    color:var(--white);
+    border:2px solid var(--white);
     font-size:1.3rem;
+  }
+  .bottom-nav .nav-profile-icon{
+    width:34px;
+    height:34px;
+    flex:0 0 34px;
   }
   .publish-nav{
     order:0;

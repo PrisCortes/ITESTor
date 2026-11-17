@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#123f4b" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg" />
-  <link rel="stylesheet" href="css/variables.css?v=20261117-1" />
-  <link rel="stylesheet" href="css/base.css?v=20261117-1" />
-  <link rel="stylesheet" href="css/components.css?v=20261117-1" />
+  <link rel="stylesheet" href="css/variables.css?v=20261117-2" />
+  <link rel="stylesheet" href="css/base.css?v=20261117-2" />
+  <link rel="stylesheet" href="css/components.css?v=20261117-2" />
   <title>Chat | ITEStore</title>
   <style>
     html,
@@ -22,8 +22,8 @@
       position: fixed;
       inset: 0;
       width: 100%;
-      min-height: 100svh;
-      height: 100dvh;
+      min-height: var(--chat-viewport-height, 100svh);
+      height: var(--chat-viewport-height, 100dvh);
       max-width: 780px;
       margin: 0 auto;
       display: flex;
@@ -564,6 +564,6 @@
 
   <div id="chat-modal-root"></div>
   <div id="toast-root" class="toast-root" aria-live="polite"></div>
-  <script type="module" src="js/chat.js?v=20261117-1"></script>
+  <script type="module" src="js/chat.js?v=20261117-2"></script>
 </body>
 </html>

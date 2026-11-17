@@ -163,7 +163,7 @@ function renderProfile() {
   const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
   const avatarSrc = state.pendingAvatarPreview || profile.avatar_url;
   const avatarNode = avatarSrc
-    ? `<img class="avatar" id="profile-avatar-preview" src="${escapeHtml(avatarSrc)}" alt="${escapeHtml(displayName)}" style="object-position:${state.avatarCrop.x}% ${state.avatarCrop.y}%;transform:scale(${state.avatarCrop.zoom})" />`
+    ? `<img class="avatar" id="profile-avatar-preview" src="${escapeHtml(avatarSrc)}" alt="${escapeHtml(displayName)}" style="object-position:${state.avatarCrop.x}% ${state.avatarCrop.y}%;transform:scale(${state.avatarCrop.zoom});transform-origin:${state.avatarCrop.x}% ${state.avatarCrop.y}%" />`
     : `<span class="avatar avatar-fallback" id="profile-avatar-preview" aria-label="${escapeHtml(displayName)}">${escapeHtml(displayName.slice(0, 1).toUpperCase())}</span>`;
 
   const cardContent = state.profileEditing
@@ -236,7 +236,7 @@ async function saveProfile(form) {
   if (file && file.size > 0) {
     if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 15 * 1024 * 1024) return toast('Selecciona una foto JPG, PNG o WEBP de hasta 15 MB.', 'error');
     const optimized = await prepareAvatarUpload(file, state.avatarCrop);
-    const extension = 'webp';
+    const extension = 'jpg';
     const newPath = `${state.session.user.id}/avatar-${crypto.randomUUID()}.${extension}`;
     let upload = await supabase.storage.from('profile-images').upload(newPath, optimized, { contentType: optimized.type, upsert: true });
     let bucketUsed = 'profile-images';
@@ -274,9 +274,9 @@ async function prepareAvatarUpload(file, crop) {
     const x = (size - width) * (Number(crop?.x ?? 50) / 100);
     const y = (size - height) * (Number(crop?.y ?? 50) / 100);
     context.drawImage(image, x, y, width, height);
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', .86));
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', .9));
     if (!blob) throw new Error('No fue posible procesar la imagen.');
-    return new File([blob], 'avatar.webp', { type: 'image/webp' });
+    return new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
   } finally { URL.revokeObjectURL(source); }
 }
 
@@ -415,11 +415,11 @@ async function createTransactionRequest(event, product) {
   location.hash = '#chats';
 }
 
-const chatSelect = 'id,participant_a,participant_b,created_at,updated_at,transaction_requests(id,status,publications(title),transactions(id,status,completed_at,meeting_at,payment_method,meeting_points(name))),loan_requests(id,title,status,loans(id,status,closed_at,meeting_point_id,meeting_at,return_meeting_point_id,return_meeting_at,delivery_point:meeting_points!loans_meeting_point_id_fkey(name),return_point:meeting_points!loans_return_meeting_point_id_fkey(name)))';
+const chatSelect = 'id,participant_a,participant_b,created_at,updated_at,transaction_requests(id,status,updated_at,publications(title),transactions(id,status,completed_at,cancelled_at,updated_at,meeting_at,payment_method,meeting_points(name))),loan_requests(id,title,status,updated_at,loans(id,status,closed_at,updated_at,meeting_point_id,meeting_at,return_meeting_point_id,return_meeting_at,delivery_point:meeting_points!loans_meeting_point_id_fkey(name),return_point:meeting_points!loans_return_meeting_point_id_fkey(name)))';
 const asOne = value => Array.isArray(value) ? value[0] : value;
 const chatPreview = value => value && value.length > 52 ? `${value.slice(0, 51)}…` : value;
 const chatListStamp = value => { const date = new Date(value); const today = new Date(); const sameDay = date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth() && date.getDate() === today.getDate(); return sameDay ? date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase() : date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: date.getFullYear() === today.getFullYear() ? undefined : 'numeric' }); };
-function chatFinishedAt(chat) { const transaction = asOne(asOne(chat.transaction_requests)?.transactions); const loan = asOne(asOne(chat.loan_requests)?.loans); return transaction?.completed_at || loan?.closed_at || null; }
+function chatFinishedAt(chat) { const request = asOne(chat.transaction_requests); const transaction = asOne(request?.transactions); const loanRequest = asOne(chat.loan_requests); const loan = asOne(loanRequest?.loans); return transaction?.completed_at || loan?.closed_at || (transaction?.status === 'CANCELLED' ? (transaction.cancelled_at || transaction.updated_at) : null) || (loan?.status === 'CANCELLED' ? loan.updated_at : null) || (request?.status === 'REJECTED' ? request.updated_at : null) || null; }
 
 function chatRowStatusIcon(message, userId) {
   if (!message || message.sender_id !== userId) return '';
@@ -833,7 +833,7 @@ document.addEventListener('submit', event => {
 });
 document.addEventListener('input', event => {
   if (event.target.closest('.floating-field')) syncFloatingFields(event.target.closest('.floating-field').parentElement);
-  if (event.target.dataset.avatarCrop) { state.avatarCrop[event.target.dataset.avatarCrop] = Number(event.target.value); const preview = $('#profile-avatar-preview'); if (preview) { preview.style.objectPosition = `${state.avatarCrop.x}% ${state.avatarCrop.y}%`; preview.style.transform = `scale(${state.avatarCrop.zoom})`; } }
+  if (event.target.dataset.avatarCrop) { state.avatarCrop[event.target.dataset.avatarCrop] = Number(event.target.value); const preview = $('#profile-avatar-preview'); if (preview) { preview.style.objectPosition = `${state.avatarCrop.x}% ${state.avatarCrop.y}%`; preview.style.transform = `scale(${state.avatarCrop.zoom})`; preview.style.transformOrigin = `${state.avatarCrop.x}% ${state.avatarCrop.y}%`; } }
   if (event.target.id === 'search-input' || event.target.closest('#search-filters')) triggerSearchUpdate();
 });
 document.addEventListener('change', event => {
@@ -966,5 +966,5 @@ async function rejectLoanOffer(offerId) {
 async function viewReceivedLoanOffers(loanId) { const loan = await loadLoanDetail(loanId); if (!loan) return; const offers = loan.loan_offers || []; $('#modal-root').innerHTML = `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="received-offers-title"><button class="modal-close" data-action="close-modal" aria-label="Cerrar">×</button><h2 id="received-offers-title">Propuestas recibidas</h2>${offers.length ? offers.map(offer => `<article class="list-card"><div><h3>${escapeHtml(loan.offerPeople.get(offer.lender_id)?.name || 'Estudiante ITESA')}</h3><p>${escapeHtml(offer.note || 'Sin mensaje adicional')}</p></div>${offer.status === 'PENDING' && loan.status === 'OPEN' ? `<button class="button compact" data-select-loan-offer="${offer.id}">Seleccionar</button>` : `<span class="badge pending">${escapeHtml(offer.status)}</span>`}</article>`).join('') : '<p>Aún no hay propuestas para esta solicitud.</p>'}</section></div>`; }
 document.addEventListener('click', async event => { const offer = event.target.closest('[data-action="offer-loan-direct"]'); if (offer) { event.preventDefault(); event.stopImmediatePropagation(); await openLoanDetail(offer.dataset.loanId); return openLoanOfferForm(); } const view = event.target.closest('[data-action="view-my-loan-offers"]'); if (view) { event.preventDefault(); event.stopImmediatePropagation(); return viewReceivedLoanOffers(view.dataset.loanId); } }, true);
 
-async function init() { bindEvents(); bindLoanContacts(); syncFloatingFields(); window.addEventListener('beforeunload', stopChatsRealtime); if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(registration => registration.update()).catch(error => console.error('No se pudo registrar el Service Worker:', error)); await loadCareers(); await refreshSession(); if (isConfigured) { supabase.auth.onAuthStateChange(()=>refreshSession()); } else toast('Modo preparación: añade la URL y anon key de Supabase para activar las funciones.', ''); setView(location.hash.replace('#','') || 'home'); }
+async function init() { bindEvents(); bindLoanContacts(); syncFloatingFields(); window.addEventListener('beforeunload', stopChatsRealtime); if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js?v=20261117-2', { updateViaCache: 'none' }).then(registration => registration.update()).catch(error => console.error('No se pudo registrar el Service Worker:', error)); await loadCareers(); await refreshSession(); if (isConfigured) { supabase.auth.onAuthStateChange(()=>refreshSession()); } else toast('Modo preparación: añade la URL y anon key de Supabase para activar las funciones.', ''); setView(location.hash.replace('#','') || 'home'); }
 init().catch(error => { console.error('No fue posible iniciar ITEStore:', error); const target = $('#feed') || $('#profile-content'); if (target) target.innerHTML = empty('No se pudo iniciar la aplicación. Recarga desde http://localhost:8000 después de aplicar las migraciones.', '⚠'); });
