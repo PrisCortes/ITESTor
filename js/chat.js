@@ -1,6 +1,6 @@
 import { supabase, isConfigured } from './supabaseClient.js';
 
-const CHAT_BUILD = '20261117-5';
+const CHAT_BUILD = '20261117-6';
 
 function syncChatViewport() {
   const height = Math.round(window.visualViewport?.height || window.innerHeight);
@@ -11,18 +11,27 @@ window.addEventListener('resize', syncChatViewport);
 window.visualViewport?.addEventListener('resize', syncChatViewport);
 window.visualViewport?.addEventListener('scroll', syncChatViewport);
 
+async function activateCurrentServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  const registration = await navigator.serviceWorker.register(`/sw.js?v=${CHAT_BUILD}`, { scope:'/', updateViaCache:'none' });
+  await registration.update();
+  const worker = registration.installing || registration.waiting;
+  if (worker) await new Promise(resolve => {
+    const finish = () => resolve();
+    worker.addEventListener('statechange', () => { if (worker.state === 'activated' || worker.state === 'redundant') finish(); }, { once:false });
+    setTimeout(finish, 2500);
+  });
+}
+
+activateCurrentServiceWorker().catch(error => console.warn('No se pudo actualizar la aplicación instalada:', error));
+
 async function returnToChats(event) {
   event.preventDefault();
-  const resetKey = `itestore-chat-return-reset-${CHAT_BUILD}`;
   try {
-    if (!localStorage.getItem(resetKey)) {
-      const registrations = await navigator.serviceWorker?.getRegistrations?.() || [];
-      await Promise.all(registrations.map(registration => registration.unregister()));
-      if ('caches' in window) await Promise.all((await caches.keys()).map(key => caches.delete(key)));
-      localStorage.setItem(resetKey, '1');
-    }
+    await activateCurrentServiceWorker();
+    if ('caches' in window) await Promise.all((await caches.keys()).map(key => caches.delete(key)));
   } catch (error) { console.warn('No se pudo limpiar la versión anterior de la aplicación:', error); }
-  location.replace(`index.html?v=${CHAT_BUILD}&from=chat#chats`);
+  location.replace(`index.html?v=${CHAT_BUILD}&from=chat&cache=${Date.now()}#chats`);
 }
 
 const $ = selector => document.querySelector(selector);

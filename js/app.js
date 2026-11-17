@@ -4,7 +4,7 @@ const state = { session: null, profile: null, careers: [], publications: [], det
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, char => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[char]));
-const CHAT_BUILD = '20261117-5';
+const CHAT_BUILD = '20261117-6';
 const chatUrl = id => `chat.html?v=${CHAT_BUILD}&id=${encodeURIComponent(id)}`;
 const validInstitutionalEmail = email => /^[^@\s]+@itesa\.edu\.mx$/i.test(email.trim());
 

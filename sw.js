@@ -8,7 +8,7 @@ self.addEventListener('activate', event => event.waitUntil(
 ));
 self.addEventListener('push', event => {
   const data = event.data?.json() || {};
-  event.waitUntil(self.registration.showNotification(data.title || 'ITEStore', { body:data.body || 'Tienes una actualización.', data:{ url:data.url || '/index.html#home' }, icon:'/assets/icons/itestore-icon.png', badge:'/assets/icons/itestore-icon.png' }));
+  event.waitUntil(self.registration.showNotification(data.title || 'ITEStore', { body:data.body || 'Tienes una actualización.', tag:data.tag || 'itestore-message', renotify:true, data:{ url:data.url || '/index.html#home' }, icon:'/assets/icons/itestore-icon.png', badge:'/assets/icons/itestore-icon.png' }));
 });
 self.addEventListener('notificationclick', event => {
   event.notification.close();
