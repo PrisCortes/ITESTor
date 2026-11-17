@@ -1,6 +1,6 @@
 import { supabase, isConfigured } from './supabaseClient.js';
 
-const CHAT_BUILD = '20261117-9';
+const CHAT_BUILD = '20261117-10';
 
 function syncChatViewport() {
   const height = Math.round(window.visualViewport?.height || window.innerHeight);
@@ -603,7 +603,27 @@ async function loadMessages() {
   pendingMessage = null;
   currentMessages = data || [];
   renderMessages(currentMessages);
-  supabase.rpc('mark_chat_messages_seen', { p_chat_id: id }).catch(() => {});
+  markCurrentMessagesSeen();
+}
+
+async function clearChatNotification() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const notifications = await registration.getNotifications();
+    notifications.filter(notification => notification.tag === `chat-${id}` || notification.data?.url?.includes(`id=${id}`)).forEach(notification => notification.close());
+  } catch (_) { /* El chat sigue funcionando cuando el navegador no expone notificaciones activas. */ }
+}
+
+async function markCurrentMessagesSeen() {
+  const incomingIds = currentMessages.filter(message => message.sender_id !== userId).map(message => message.id);
+  if (!incomingIds.length) return clearChatNotification();
+  const { error } = await supabase.rpc('mark_chat_messages_seen', { p_chat_id: id });
+  if (error) {
+    const now = new Date().toISOString();
+    await supabase.from('message_receipts').update({ delivered_at:now, read_at:now }).eq('recipient_id', userId).in('message_id', incomingIds).is('read_at', null);
+  }
+  clearChatNotification();
 }
 
 function queueReload() {
