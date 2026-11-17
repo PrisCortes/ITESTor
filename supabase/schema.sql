@@ -166,7 +166,7 @@ create table public.chats (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (participant_a <> participant_b),
-  check ((transaction_request_id is not null)::integer + (loan_request_id is not null)::integer = 1)
+  check ((transaction_request_id is not null)::integer + (loan_request_id is not null)::integer <= 1)
 );
 create index chats_participants_idx on public.chats(participant_a, participant_b, updated_at desc);
 
