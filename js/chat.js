@@ -1,6 +1,6 @@
 import { supabase, isConfigured } from './supabaseClient.js';
 
-const CHAT_BUILD = '20261117-7';
+const CHAT_BUILD = '20261117-8';
 
 function syncChatViewport() {
   const height = Math.round(window.visualViewport?.height || window.innerHeight);
@@ -37,6 +37,7 @@ let transaction = null;
 let loanRequest = null;
 let loan = null;
 let ratings = [];
+let currentMessages = [];
 let chatEvents = [];
 let refreshTimer = null;
 let fallbackRefreshTimer = null;
@@ -600,8 +601,9 @@ async function loadMessages() {
     chatEvents = events || [];
   }
   pendingMessage = null;
-  renderMessages(data || []);
-  await supabase.rpc('mark_chat_messages_seen', { p_chat_id: id });
+  currentMessages = data || [];
+  renderMessages(currentMessages);
+  supabase.rpc('mark_chat_messages_seen', { p_chat_id: id }).catch(() => {});
 }
 
 function queueReload() {
@@ -680,20 +682,18 @@ async function load(keepChannel = false) {
   transaction = one(request?.transactions);
   loan = one(loanRequest?.loans);
 
-  if (loanRequest) {
-    await loadLoanPeople([
+  const otherId = chat.participant_a === userId ? chat.participant_b : chat.participant_a;
+  const messagesPromise = loadMessages();
+  const ratingsPromise = loadRatings();
+  const profilePromise = supabase.rpc('get_public_profile', { p_profile_id: chat.participant_a === userId ? chat.participant_b : chat.participant_a });
+  const loanPeoplePromise = loanRequest ? loadLoanPeople([
       loanRequest.requester_id,
       loan?.requester_id,
       loan?.lender_id,
       ...(loanRequest.loan_offers || []).map(offer => offer.lender_id)
-    ]);
-    await ensureLoanOfferInitialMessage();
-  }
-
-  await loadRatings();
-
-  const otherId = chat.participant_a === userId ? chat.participant_b : chat.participant_a;
-  const { data: otherProfiles } = await supabase.rpc('get_public_profile', { p_profile_id: otherId });
+    ]) : Promise.resolve();
+  if (loanRequest) await ensureLoanOfferInitialMessage();
+  const [, { data: otherProfiles }] = await Promise.all([Promise.all([messagesPromise, ratingsPromise, loanPeoplePromise]), profilePromise]);
   otherUser = otherProfiles?.[0] || { id: otherId, name: 'Usuario' };
 
   $('#chat-user-name').textContent = otherUser.name || 'Nombre del usuario';
@@ -701,7 +701,7 @@ async function load(keepChannel = false) {
   $('#chat-avatar').outerHTML = `<span id="chat-avatar">${avatar(otherUser)}</span>`;
 
   updateHeaderAndControls();
-  await loadMessages();
+  renderMessages(currentMessages);
 
   if (channel && !keepChannel) {
     await supabase.removeChannel(channel);
