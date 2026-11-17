@@ -1,6 +1,6 @@
 import { supabase, isConfigured } from './supabaseClient.js';
 
-const CHAT_BUILD = '20261117-8';
+const CHAT_BUILD = '20261117-9';
 
 function syncChatViewport() {
   const height = Math.round(window.visualViewport?.height || window.innerHeight);
@@ -685,20 +685,22 @@ async function load(keepChannel = false) {
   const otherId = chat.participant_a === userId ? chat.participant_b : chat.participant_a;
   const messagesPromise = loadMessages();
   const ratingsPromise = loadRatings();
-  const profilePromise = supabase.rpc('get_public_profile', { p_profile_id: chat.participant_a === userId ? chat.participant_b : chat.participant_a });
+  const profilePromise = supabase.from('public_profile_summaries').select('id,name,avatar_url').eq('id', otherId).maybeSingle();
   const loanPeoplePromise = loanRequest ? loadLoanPeople([
       loanRequest.requester_id,
       loan?.requester_id,
       loan?.lender_id,
       ...(loanRequest.loan_offers || []).map(offer => offer.lender_id)
     ]) : Promise.resolve();
-  if (loanRequest) await ensureLoanOfferInitialMessage();
-  const [, { data: otherProfiles }] = await Promise.all([Promise.all([messagesPromise, ratingsPromise, loanPeoplePromise]), profilePromise]);
-  otherUser = otherProfiles?.[0] || { id: otherId, name: 'Usuario' };
+  const { data: profileSummary } = await profilePromise;
+  otherUser = profileSummary || { id: otherId, name: 'Usuario' };
 
   $('#chat-user-name').textContent = otherUser.name || 'Nombre del usuario';
   $('#chat-product-name').textContent = request?.publications?.title || loanRequest?.title || 'Nombre del producto';
   $('#chat-avatar').outerHTML = `<span id="chat-avatar">${avatar(otherUser)}</span>`;
+
+  if (loanRequest) await ensureLoanOfferInitialMessage();
+  await Promise.all([messagesPromise, ratingsPromise, loanPeoplePromise]);
 
   updateHeaderAndControls();
   renderMessages(currentMessages);

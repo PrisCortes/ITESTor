@@ -49,7 +49,7 @@ Deno.serve(async request => {
     const recentLines = (unreadMessages || []).slice().reverse().map(row => String(row.content || '').replace(/\s+/g, ' ').trim().slice(0, 120)).filter(Boolean);
     const count = recentLines.length || 1;
     const body = count > 1 ? `${count} mensajes nuevos\n${recentLines.join('\n')}` : (recentLines[0] || messageBody || 'Te envió un mensaje.');
-    const payload = JSON.stringify({ title:senderName, body, url:`/chat.html?v=20261117-7&id=${message.chat_id}`, tag:`chat-${message.chat_id}`, count });
+    const payload = JSON.stringify({ title:senderName, body, url:`/chat.html?v=20261117-9&id=${message.chat_id}`, tag:`chat-${message.chat_id}`, count });
     await Promise.all((subscriptions || []).map(async subscription => {
       try { await webpush.sendNotification({ endpoint:subscription.endpoint, keys:{ p256dh:subscription.p256dh, auth:subscription.auth } }, payload); }
       catch (error: any) { const status = error?.statusCode; if (status === 404 || status === 410) await client.from('push_subscriptions').update({ revoked_at:new Date().toISOString() }).eq('id',subscription.id); else console.error('Push no entregado', error); }
