@@ -31,7 +31,7 @@ Deno.serve(async request => {
     if (!publicKey || !privateKey || !subject) throw new Error('Faltan secretos VAPID en la función');
     webpush.setVapidDetails(subject, publicKey, privateKey);
     const { data:subscriptions } = await client.from('push_subscriptions').select('id,endpoint,p256dh,auth').eq('user_id',recipientId).is('revoked_at',null);
-    const payload = JSON.stringify({ title:'ITEStore', body:'Tienes un mensaje nuevo.', url:`/chat.html?id=${message.chat_id}`, tag:`message-${message.id}` });
+    const payload = JSON.stringify({ title:'ITEStore', body:'Tienes un mensaje nuevo.', url:`/chat.html?v=20261117-3&id=${message.chat_id}`, tag:`message-${message.id}` });
     await Promise.all((subscriptions || []).map(async subscription => {
       try { await webpush.sendNotification({ endpoint:subscription.endpoint, keys:{ p256dh:subscription.p256dh, auth:subscription.auth } }, payload); }
       catch (error: any) { const status = error?.statusCode; if (status === 404 || status === 410) await client.from('push_subscriptions').update({ revoked_at:new Date().toISOString() }).eq('id',subscription.id); else console.error('Push no entregado', error); }

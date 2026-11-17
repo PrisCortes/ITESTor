@@ -621,7 +621,7 @@ async function openOtherUserProfile() {
       <h2 id="chat-profile-title">${safe(profile.name || 'Usuario')}</h2>
       <p class="muted">${safe(profile.email || '')}</p>
       <p>${stars} ${Number(profile.rating_average || 0).toFixed(1)} / 5</p>
-      <div class="chat-profile-actions"><button type="button" class="button secondary" data-chat-profile-action="block">Bloquear</button><button type="button" class="button secondary" data-chat-profile-action="report">Reportar</button></div>
+      <div class="chat-profile-actions"><button type="button" class="button" data-chat-profile-action="chat">Chatear</button><button type="button" class="button secondary" data-chat-profile-action="block">Bloquear</button><button type="button" class="button secondary" data-chat-profile-action="report">Reportar</button></div>
       <h3>Publicaciones</h3>
       <div class="chat-publications">${cards}</div>
       <div class="chat-modal-actions"><button type="button" class="button" data-close-chat-modal>Cerrar</button></div>
@@ -789,6 +789,7 @@ document.addEventListener('click', async event => {
   }
 
   const profileAction = event.target.closest('[data-chat-profile-action]')?.dataset.chatProfileAction;
+  if (profileAction === 'chat') return closeChatModal(false);
   if (profileAction === 'block' || profileAction === 'report') {
     const reason = prompt(profileAction === 'block' ? 'Indica brevemente el motivo del bloqueo:' : 'Indica el motivo del reporte:');
     if (reason === null) return;
